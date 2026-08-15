@@ -82,4 +82,32 @@ void main() {
       expect(AppValidators.optionalNonNegativeInteger('-5'), isNotNull);
     });
   });
+
+  group('AppValidators.updatedOdometer', () {
+    test('menerima nilai yang sama atau lebih besar', () {
+      expect(
+        AppValidators.updatedOdometer('12000', currentOdometer: 12000),
+        isNull,
+      );
+      expect(
+        AppValidators.updatedOdometer('12500', currentOdometer: 12000),
+        isNull,
+      );
+    });
+
+    test('menolak nilai negatif, tidak valid, atau lebih kecil', () {
+      expect(
+        AppValidators.updatedOdometer('-1', currentOdometer: 12000),
+        isNotNull,
+      );
+      expect(
+        AppValidators.updatedOdometer('abc', currentOdometer: 12000),
+        isNotNull,
+      );
+      expect(
+        AppValidators.updatedOdometer('11999', currentOdometer: 12000),
+        contains('tidak boleh lebih kecil'),
+      );
+    });
+  });
 }
