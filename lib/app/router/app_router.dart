@@ -11,6 +11,9 @@ import 'package:mentorride/features/auth/providers/auth_providers.dart';
 import 'package:mentorride/features/navigation/presentation/main_navigation_shell.dart';
 import 'package:mentorride/features/navigation/presentation/navigation_placeholder_screen.dart';
 import 'package:mentorride/features/navigation/presentation/splash_screen.dart';
+import 'package:mentorride/features/vehicles/presentation/screens/vehicle_detail_screen.dart';
+import 'package:mentorride/features/vehicles/presentation/screens/vehicle_form_screen.dart';
+import 'package:mentorride/features/vehicles/presentation/screens/vehicle_list_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
@@ -83,6 +86,41 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         path: AppRoutes.forgotPassword,
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.vehicles,
+        builder: (context, state) => VehicleListScreen(
+          onAddVehicle: () => context.push(AppRoutes.vehicleNew),
+          onOpenVehicle: (vehicleId) {
+            context.push(AppRoutes.vehicleDetail(vehicleId));
+          },
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.vehicleNew,
+        builder: (context, state) => const VehicleFormScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/vehicles/:vehicleId',
+        builder: (context, state) {
+          final vehicleId = state.pathParameters['vehicleId']!;
+          return VehicleDetailScreen(
+            vehicleId: vehicleId,
+            onEditVehicle: (_) {
+              context.push(AppRoutes.vehicleEdit(vehicleId));
+            },
+            onDeleted: () => context.pop(),
+          );
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/vehicles/:vehicleId/edit',
+        builder: (context, state) =>
+            VehicleFormScreen(vehicleId: state.pathParameters['vehicleId']!),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

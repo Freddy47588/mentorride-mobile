@@ -7,4 +7,10 @@ abstract final class AppRoutes {
   static const history = '/history';
   static const schedules = '/schedules';
   static const profile = '/profile';
+  static const vehicles = '/vehicles';
+  static const vehicleNew = '/vehicles/new';
+
+  static String vehicleDetail(String vehicleId) => '/vehicles/$vehicleId';
+
+  static String vehicleEdit(String vehicleId) => '/vehicles/$vehicleId/edit';
 }
