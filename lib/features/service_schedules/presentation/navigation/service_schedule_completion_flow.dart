@@ -13,6 +13,28 @@ abstract final class ServiceScheduleCompletionFlow {
     required WidgetRef ref,
     required ServiceSchedule schedule,
   }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Tandai jadwal selesai?'),
+        content: const Text(
+          'Pengingat untuk jadwal ini akan dibatalkan dan status tidak dapat '
+          'dikembalikan dari halaman ini.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Tandai selesai'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return false;
+
     final completed = await ref
         .read(serviceScheduleControllerProvider.notifier)
         .complete(schedule);
