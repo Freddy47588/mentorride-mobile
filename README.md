@@ -130,10 +130,15 @@ sampai data odometer di aplikasi diperbarui.
 
 ## Firestore Security Rules
 
-`firestore.rules` hanya mengizinkan pengguna terautentikasi mengakses dokumen
-`users/{uid}` dan seluruh turunannya ketika `request.auth.uid == uid`. Semua
-path lain ditolak. Query saat ini tidak memerlukan compound index, sehingga
+`firestore.rules` hanya mengizinkan pengguna terautentikasi mengakses profil,
+kendaraan, riwayat servis, dan jadwal di bawah `users/{uid}` miliknya. Semua path
+lain ditolak. Query saat ini tidak memerlukan compound index, sehingga
 `firestore.indexes.json` tetap kosong.
+
+Write dokumen kendaraan juga mewajibkan `currentOdometer` berupa integer
+nonnegatif dan tidak lebih kecil daripada nilai yang sudah tersimpan. Dokumen
+lama dengan odometer hilang atau bukan integer tetap dapat dimigrasikan ke nilai
+valid tanpa membuka akses lintas pengguna.
 
 Tinjau proyek Firebase aktif sebelum menjalankan perintah berikut secara manual:
 

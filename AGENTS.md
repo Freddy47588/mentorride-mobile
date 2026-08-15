@@ -14,7 +14,8 @@
   integer.
 - Perlakukan `currentOdometer` sebagai nilai monoton. Pembaruan cepat dan edit
   kendaraan harus memakai transaksi, menolak nilai yang lebih kecil, serta
-  memperlakukan nilai yang sama sebagai tanpa perubahan. Riwayat servis hanya
+  memperlakukan nilai yang sama sebagai tanpa perubahan. Firestore rules juga
+  harus menolak write kendaraan yang menurunkan nilai. Riwayat servis hanya
   boleh menaikkan odometer kendaraan.
 - Gunakan `ServiceScheduleDueCalculator` sebagai sumber aturan jatuh tempo pada
   dashboard, daftar, dan detail. Perbandingan tanggal mengabaikan jam; hasil

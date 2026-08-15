@@ -6,10 +6,35 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    function hasValidOdometer(data) {
+      return data.currentOdometer is int && data.currentOdometer >= 0;
+    }
+
+    function preservesOdometer() {
+      return hasValidOdometer(request.resource.data)
+        && (
+          !('currentOdometer' in resource.data)
+          || !(resource.data.currentOdometer is int)
+          || request.resource.data.currentOdometer
+            >= resource.data.currentOdometer
+        );
+    }
+
     match /users/{uid} {
       allow read, write: if isOwner(uid);
 
-      match /{document=**} {
+      match /vehicles/{vehicleId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && hasValidOdometer(request.resource.data);
+        allow update: if isOwner(uid) && preservesOdometer();
+      }
+
+      match /vehicles/{vehicleId}/service_records/{recordId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /vehicles/{vehicleId}/service_schedules/{scheduleId} {
         allow read, write: if isOwner(uid);
       }
     }
