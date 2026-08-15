@@ -12,8 +12,25 @@
 - Tulis `createdAt` dan `updatedAt` dengan server timestamp serta tangani nilai
   sementara `null`. Simpan Rupiah, kilometer, tahun, dan ID notifikasi sebagai
   integer.
+- Perlakukan `currentOdometer` sebagai nilai monoton. Pembaruan cepat dan edit
+  kendaraan harus memakai transaksi, menolak nilai yang lebih kecil, serta
+  memperlakukan nilai yang sama sebagai tanpa perubahan. Riwayat servis hanya
+  boleh menaikkan odometer kendaraan.
+- Gunakan `ServiceScheduleDueCalculator` sebagai sumber aturan jatuh tempo pada
+  dashboard, daftar, dan detail. Perbandingan tanggal mengabaikan jam; hasil
+  tanggal dan odometer harus tetap tersedia sebagai dua dimensi terpisah.
+  `currentOdometer >= dueOdometer` berarti ambang kilometer sudah terlambat.
+- Preset perawatan adalah data referensi lokal. Jangan mengubahnya menjadi
+  dataset eksternal atau menyimpan preset sebagai skema Firestore baru.
+- Saat membuat jadwal lanjutan dari jadwal yang selesai, hanya gunakan judul dan
+  jenis servis sebagai isian awal. Tanggal harus dipilih ulang; kilometer
+  opsional dan konfigurasi pengingat tidak boleh diwarisi.
 - Notifikasi bersifat lokal, memakai timezone Asia/Jakarta, dan harus konsisten
   pada create, edit, delete, selesai, penghapusan kendaraan, serta logout.
+- Notifikasi lokal dipicu oleh `reminderAt`; aplikasi tidak memantau odometer
+  fisik di latar belakang. Status kilometer baru berubah setelah odometer atau
+  data kendaraan diperbarui, jadi jangan mengklaim notifikasi kilometer waktu
+  nyata.
 - Firestore rules wajib memeriksa `request.auth.uid == uid`; jangan pernah
   menambahkan akses publik atau sekadar memeriksa pengguna sudah login.
 - Jangan menambahkan AI, dataset eksternal, nama pribadi, Firebase Messaging,

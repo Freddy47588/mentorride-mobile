@@ -8,11 +8,19 @@ input pengguna dan disimpan per akun di Cloud Firestore.
 
 - Registrasi, login, reset kata sandi, edit nama, dan logout dengan Firebase
   Authentication.
-- CRUD kendaraan dan pilihan kendaraan aktif yang disimpan per pengguna.
+- CRUD kendaraan, pilihan kendaraan aktif yang disimpan per pengguna, dan
+  pembaruan odometer cepat. Nilai odometer dijaga tidak pernah turun melalui
+  transaksi Firestore; nilai yang sama diperlakukan sebagai tanpa perubahan.
 - Riwayat servis dengan beberapa item per transaksi, total biaya otomatis,
   filter bulan/tahun, serta pembaruan odometer kendaraan secara transaksional.
-- Jadwal servis dengan tanggal atau kilometer jatuh tempo, pengingat lokal,
-  status selesai, dan ID notifikasi yang stabil.
+- Preset perawatan lokal untuk membantu mengisi komponen dan jenis servis tanpa
+  mengambil dataset eksternal.
+- Jadwal servis dengan tanggal jatuh tempo dan kilometer jatuh tempo opsional,
+  kalkulator status bersama untuk kedua dimensi, pengingat lokal, status
+  selesai, dan ID notifikasi yang stabil.
+- Alur selesai dapat membuka formulir jadwal berikutnya dengan judul dan jenis
+  servis yang sama. Tanggal wajib dipilih ulang; kilometer opsional dan pilihan
+  pengingat tidak diwarisi.
 - Dashboard kendaraan aktif, servis terakhir, jadwal terdekat, biaya bulan dan
   tahun berjalan, serta grafik biaya enam bulan.
 - Antarmuka Material 3 berbahasa Indonesia dengan loading, error, empty state,
@@ -49,7 +57,9 @@ lib/
 
 Setiap fitur memisahkan model/domain, adapter data atau repository, provider,
 controller/service bila diperlukan, dan layar presentasi. Model menggunakan
-`fromMap`, `toMap`, dan `copyWith` tanpa code generation.
+`fromMap`, `toMap`, dan `copyWith` tanpa code generation. Status jatuh tempo
+tanggal dan odometer dihitung oleh satu kalkulator domain agar dashboard,
+daftar, dan detail menggunakan aturan yang sama.
 
 ## Struktur Cloud Firestore
 
@@ -112,6 +122,12 @@ notifikasi saat pengguna mengaktifkan pengingat. Pengingat dibatalkan ketika
 jadwal diedit, dihapus, ditandai selesai, kendaraannya dihapus, atau pengguna
 logout.
 
+Pengingat lokal dijadwalkan berdasarkan `reminderAt`, bukan berdasarkan sensor
+odometer kendaraan. Ambang `dueOdometer` dievaluasi setelah kilometer kendaraan
+diubah atau data terbaru dimuat di aplikasi. Karena MVP tidak memantau kendaraan
+di latar belakang, tercapainya kilometer fisik tidak dapat memicu notifikasi
+sampai data odometer di aplikasi diperbarui.
+
 ## Firestore Security Rules
 
 `firestore.rules` hanya mengizinkan pengguna terautentikasi mengakses dokumen
@@ -137,7 +153,9 @@ flutter build apk --debug
 ```
 
 Pengujian unit tidak mengakses proyek Firebase live. Repository dan scheduler
-notifikasi diuji melalui fake yang berada di folder `test/`.
+notifikasi diuji melalui fake yang berada di folder `test/`. Kalkulator jatuh
+tempo, aturan odometer tidak menurun, preset lokal, dan isian awal jadwal
+berikutnya juga memiliki pengujian terpisah.
 
 ## Catatan pengembangan
 
@@ -145,6 +163,9 @@ notifikasi diuji melalui fake yang berada di folder `test/`.
   Indonesia.
 - Firestore tidak menghapus subcollection secara otomatis; penghapusan
   kendaraan menggunakan cascade delete dan membatalkan pengingat turunannya.
-- Mengedit atau menghapus riwayat servis tidak menurunkan odometer kendaraan.
+- Odometer kendaraan bersifat monoton: pembaruan cepat, edit kendaraan, dan
+  pencatatan servis tidak boleh menurunkan nilai yang sudah tersimpan.
+- Mengedit atau menghapus riwayat servis tidak menghitung mundur odometer
+  kendaraan.
 - Aplikasi tidak menggunakan AI, Firebase Messaging, Cloud Functions, atau
   dataset eksternal.
