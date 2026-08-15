@@ -11,6 +11,9 @@ import 'package:mentorride/features/auth/providers/auth_providers.dart';
 import 'package:mentorride/features/navigation/presentation/main_navigation_shell.dart';
 import 'package:mentorride/features/navigation/presentation/navigation_placeholder_screen.dart';
 import 'package:mentorride/features/navigation/presentation/splash_screen.dart';
+import 'package:mentorride/features/service_records/presentation/screens/service_record_detail_screen.dart';
+import 'package:mentorride/features/service_records/presentation/screens/service_record_form_screen.dart';
+import 'package:mentorride/features/service_records/presentation/screens/service_record_list_screen.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_detail_screen.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_form_screen.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_list_screen.dart';
@@ -146,11 +149,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.history,
-                builder: (context, state) => const NavigationPlaceholderScreen(
-                  title: 'Riwayat servis',
-                  message: 'Catatan servis kendaraan akan tampil di sini.',
-                  icon: Icons.receipt_long_rounded,
-                ),
+                builder: (context, state) => const ServiceRecordListScreen(),
+                routes: [
+                  GoRoute(
+                    parentNavigatorKey: _rootNavigatorKey,
+                    path: 'new',
+                    builder: (context, state) =>
+                        const ServiceRecordFormScreen(),
+                  ),
+                  GoRoute(
+                    parentNavigatorKey: _rootNavigatorKey,
+                    path: ':recordId',
+                    builder: (context, state) => ServiceRecordDetailScreen(
+                      recordId: state.pathParameters['recordId']!,
+                    ),
+                  ),
+                  GoRoute(
+                    parentNavigatorKey: _rootNavigatorKey,
+                    path: ':recordId/edit',
+                    builder: (context, state) => ServiceRecordFormScreen(
+                      recordId: state.pathParameters['recordId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

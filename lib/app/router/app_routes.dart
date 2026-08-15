@@ -9,8 +9,15 @@ abstract final class AppRoutes {
   static const profile = '/profile';
   static const vehicles = '/vehicles';
   static const vehicleNew = '/vehicles/new';
+  static const serviceRecordNew = '/history/new';
 
   static String vehicleDetail(String vehicleId) => '/vehicles/$vehicleId';
 
   static String vehicleEdit(String vehicleId) => '/vehicles/$vehicleId/edit';
+
+  static String serviceRecordDetail(String recordId) => '/history/$recordId';
+
+  static String serviceRecordEdit(String recordId) {
+    return '/history/$recordId/edit';
+  }
 }
