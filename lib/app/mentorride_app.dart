@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mentorride/app/router/app_router.dart';
 import 'package:mentorride/app/theme/app_theme.dart';
 
-class MentorRideApp extends StatelessWidget {
+class MentorRideApp extends ConsumerWidget {
   const MentorRideApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       title: 'MentorRide',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
@@ -18,9 +20,7 @@ class MentorRideApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: const Scaffold(
-        body: Center(child: Text('Menyiapkan MentorRide...')),
-      ),
+      routerConfig: ref.watch(appRouterProvider),
     );
   }
 }
