@@ -18,6 +18,7 @@ import 'package:mentorride/features/service_records/presentation/screens/service
 import 'package:mentorride/features/service_schedules/presentation/screens/service_schedule_detail_screen.dart';
 import 'package:mentorride/features/service_schedules/presentation/screens/service_schedule_form_screen.dart';
 import 'package:mentorride/features/service_schedules/presentation/screens/service_schedule_list_screen.dart';
+import 'package:mentorride/features/service_schedules/presentation/navigation/service_schedule_prefill.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_detail_screen.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_form_screen.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_list_screen.dart';
@@ -184,8 +185,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     parentNavigatorKey: _rootNavigatorKey,
                     path: 'new',
-                    builder: (context, state) =>
-                        const ServiceScheduleFormScreen(),
+                    builder: (context, state) {
+                      final extra = state.extra;
+                      return ServiceScheduleFormScreen(
+                        prefill: extra is ServiceSchedulePrefill ? extra : null,
+                      );
+                    },
                   ),
                   GoRoute(
                     parentNavigatorKey: _rootNavigatorKey,

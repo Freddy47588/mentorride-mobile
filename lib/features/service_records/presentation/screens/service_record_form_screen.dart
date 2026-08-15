@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mentorride/core/errors/app_exception.dart';
+import 'package:mentorride/core/maintenance/maintenance_preset.dart';
 import 'package:mentorride/core/utils/formatters.dart';
 import 'package:mentorride/core/utils/validators.dart';
 import 'package:mentorride/features/service_records/domain/models/service_action.dart';
@@ -30,7 +32,10 @@ class ServiceRecordFormScreen extends ConsumerWidget {
       error: (error, stackTrace) => Scaffold(
         appBar: const _FormAppBar(isEditing: true),
         body: ErrorState(
-          message: error.toString(),
+          message: userFacingErrorMessage(
+            error,
+            fallback: 'Catatan servis belum dapat dimuat.',
+          ),
           onRetry: () => ref.invalidate(serviceRecordsProvider),
         ),
       ),
@@ -112,7 +117,7 @@ class _ServiceRecordEditorState extends ConsumerState<_ServiceRecordEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _isEditing ? 'Edit Catatan Servis' : 'Tambah Catatan Servis';
+    final title = _isEditing ? 'Edit catatan servis' : 'Tambah catatan servis';
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -169,7 +174,6 @@ class _ServiceRecordEditorState extends ConsumerState<_ServiceRecordEditor> {
                 labelText: 'Odometer',
                 hintText: 'Contoh: 12500',
                 suffixText: 'km',
-                prefixIcon: Icon(Icons.speed_rounded),
               ),
               validator: (value) =>
                   AppValidators.nonNegativeInteger(value, field: 'Odometer'),
@@ -183,24 +187,30 @@ class _ServiceRecordEditorState extends ConsumerState<_ServiceRecordEditor> {
               decoration: const InputDecoration(
                 labelText: 'Bengkel',
                 hintText: 'Nama bengkel atau servis mandiri',
-                prefixIcon: Icon(Icons.storefront_outlined),
               ),
               validator: (value) =>
                   AppValidators.requiredText(value, field: 'Bengkel'),
             ),
             const SizedBox(height: 24),
-            Row(
+            Text(
+              'Item perawatan',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: Text(
-                    'Item perawatan',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                FilledButton.tonalIcon(
+                  onPressed: _isSubmitting ? null : _pickPreset,
+                  icon: const Icon(Icons.playlist_add_rounded),
+                  label: const Text('Pilih preset'),
                 ),
                 TextButton.icon(
                   onPressed: _isSubmitting ? null : _addItem,
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('Tambah item'),
+                  label: const Text('Tambah manual'),
                 ),
               ],
             ),
@@ -221,8 +231,11 @@ class _ServiceRecordEditorState extends ConsumerState<_ServiceRecordEditor> {
               color: Theme.of(context).colorScheme.primaryContainer,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 4,
                   children: [
                     Text(
                       'Total biaya',
@@ -231,7 +244,7 @@ class _ServiceRecordEditorState extends ConsumerState<_ServiceRecordEditor> {
                     Text(
                       AppFormatters.rupiah(_totalCost),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                     ),
@@ -285,6 +298,30 @@ class _ServiceRecordEditorState extends ConsumerState<_ServiceRecordEditor> {
 
   void _addItem() {
     setState(() => _items.add(_ServiceItemDraft.empty()));
+  }
+
+  Future<void> _pickPreset() async {
+    final selected = await showModalBottomSheet<MaintenancePreset>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => const _MaintenancePresetSheet(),
+    );
+    if (selected == null || !mounted) return;
+    _addPreset(selected);
+  }
+
+  void _addPreset(MaintenancePreset preset) {
+    final draft = _ServiceItemDraft.fromPreset(preset);
+    setState(() {
+      if (_items.length == 1 && _items.single.isBlank) {
+        final emptyDraft = _items.single;
+        _items[0] = draft;
+        emptyDraft.dispose();
+      } else {
+        _items.add(draft);
+      }
+    });
   }
 
   void _removeItem(int index) {
@@ -356,7 +393,14 @@ class _ServiceRecordEditorState extends ConsumerState<_ServiceRecordEditor> {
         ),
       );
     } on Object catch (error) {
-      if (mounted) _showMessage(error.toString());
+      if (mounted) {
+        _showMessage(
+          userFacingErrorMessage(
+            error,
+            fallback: 'Catatan servis belum dapat disimpan. Silakan coba lagi.',
+          ),
+        );
+      }
     } finally {
       if (mounted && _isSubmitting) {
         setState(() => _isSubmitting = false);
@@ -398,7 +442,7 @@ class _ServiceItemFieldsState extends State<_ServiceItemFields> {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           children: [
             Row(
@@ -482,7 +526,7 @@ class _FormAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text(isEditing ? 'Edit Catatan Servis' : 'Tambah Catatan Servis'),
+      title: Text(isEditing ? 'Edit catatan servis' : 'Tambah catatan servis'),
     );
   }
 }
@@ -510,13 +554,82 @@ class _ServiceItemDraft {
     );
   }
 
+  factory _ServiceItemDraft.fromPreset(MaintenancePreset preset) {
+    return _ServiceItemDraft(
+      nameController: TextEditingController(text: preset.componentName),
+      costController: TextEditingController(text: '0'),
+      action: ServiceAction.fromWire(preset.actionWireValue),
+    );
+  }
+
   final Key key = UniqueKey();
   final TextEditingController nameController;
   final TextEditingController costController;
   ServiceAction action;
 
+  bool get isBlank {
+    final parsedCost = int.tryParse(costController.text.trim()) ?? 0;
+    return nameController.text.trim().isEmpty && parsedCost == 0;
+  }
+
   void dispose() {
     nameController.dispose();
     costController.dispose();
+  }
+}
+
+class _MaintenancePresetSheet extends StatelessWidget {
+  const _MaintenancePresetSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: FractionallySizedBox(
+        heightFactor: 0.75,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pilih komponen perawatan',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Nama dan tindakan awal akan terisi. Biaya tetap Anda isi '
+                    'sendiri.',
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.separated(
+                itemCount: MaintenancePresets.values.length,
+                separatorBuilder: (context, index) =>
+                    const Divider(height: 1, indent: 72),
+                itemBuilder: (context, index) {
+                  final preset = MaintenancePresets.values[index];
+                  final action = ServiceAction.fromWire(preset.actionWireValue);
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.build_outlined),
+                    ),
+                    title: Text(preset.componentName),
+                    subtitle: Text('${action.label} • ${preset.serviceType}'),
+                    trailing: const Icon(Icons.add_circle_outline_rounded),
+                    onTap: () => Navigator.of(context).pop(preset),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

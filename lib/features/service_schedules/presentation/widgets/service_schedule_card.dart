@@ -1,52 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:mentorride/core/utils/formatters.dart';
 import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
+import 'package:mentorride/features/service_schedules/domain/services/service_schedule_due_calculator.dart';
 
 class ServiceScheduleCard extends StatelessWidget {
   const ServiceScheduleCard({
     required this.schedule,
+    required this.currentOdometer,
     required this.onTap,
     required this.onComplete,
     this.actionsEnabled = true,
+    this.now,
     super.key,
   });
 
   final ServiceSchedule schedule;
+  final int currentOdometer;
   final VoidCallback onTap;
   final VoidCallback onComplete;
   final bool actionsEnabled;
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final overdue =
-        !schedule.isCompleted && schedule.dueDate.isBefore(_startOfToday());
+    final dueStatus = ServiceScheduleDueCalculator.calculate(
+      schedule: schedule,
+      now: now ?? DateTime.now(),
+      currentOdometer: currentOdometer,
+    );
+    final overdue = !schedule.isCompleted && dueStatus.isOverdue;
+    final statusColor = overdue
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurfaceVariant;
 
     return Card(
+      color: schedule.isCompleted
+          ? theme.colorScheme.surfaceContainerLow
+          : theme.colorScheme.surface,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: actionsEnabled ? onTap : null,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.build_circle_outlined,
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,133 +58,144 @@ class ServiceScheduleCard extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
+                            color: schedule.isCompleted
+                                ? theme.colorScheme.onSurfaceVariant
+                                : null,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
                           schedule.serviceType,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  _StatusChip(schedule: schedule, overdue: overdue),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  _MetaItem(
-                    icon: Icons.event_outlined,
-                    label: AppFormatters.date(schedule.dueDate),
-                    color: overdue ? theme.colorScheme.error : null,
-                  ),
-                  if (schedule.dueOdometer case final odometer?)
-                    _MetaItem(
-                      icon: Icons.speed_rounded,
-                      label: AppFormatters.kilometer(odometer),
-                    ),
-                  _MetaItem(
-                    icon: schedule.reminderEnabled && !schedule.isCompleted
-                        ? Icons.notifications_active_outlined
-                        : Icons.notifications_off_outlined,
-                    label: schedule.reminderEnabled && !schedule.isCompleted
-                        ? 'Pengingat aktif'
-                        : 'Pengingat nonaktif',
+                  const SizedBox(width: 12),
+                  _StatusLabel(
+                    label: schedule.isCompleted
+                        ? 'Selesai'
+                        : overdue
+                        ? 'Terlambat'
+                        : 'Aktif',
+                    color: statusColor,
+                    icon: schedule.isCompleted
+                        ? Icons.check_circle_outline_rounded
+                        : overdue
+                        ? Icons.error_outline_rounded
+                        : Icons.schedule_rounded,
                   ),
                 ],
               ),
-              if (!schedule.isCompleted) ...[
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: actionsEnabled ? onComplete : null,
-                    icon: const Icon(Icons.check_circle_outline_rounded),
-                    label: const Text('Tandai selesai'),
-                  ),
+              const Divider(height: 24),
+              _ScheduleLine(
+                label:
+                    '${AppFormatters.date(schedule.dueDate)} • '
+                    '${schedule.isCompleted ? 'Jadwal selesai' : dueStatus.date.label}',
+                icon: Icons.event_outlined,
+                isOverdue: !schedule.isCompleted && dueStatus.date.isOverdue,
+              ),
+              if (schedule.dueOdometer case final dueOdometer?) ...[
+                const SizedBox(height: 7),
+                _ScheduleLine(
+                  label:
+                      '${AppFormatters.kilometer(dueOdometer)} • '
+                      '${schedule.isCompleted ? 'Jadwal selesai' : dueStatus.odometer!.label}',
+                  icon: Icons.speed_rounded,
+                  isOverdue:
+                      !schedule.isCompleted && dueStatus.odometer!.isOverdue,
                 ),
               ],
+              if (schedule.reminderEnabled && !schedule.isCompleted) ...[
+                const SizedBox(height: 7),
+                const _ScheduleLine(
+                  label: 'Pengingat aktif',
+                  icon: Icons.notifications_active_outlined,
+                ),
+              ],
+              if (!schedule.isCompleted) ...[
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: actionsEnabled ? onComplete : null,
+                    child: const Text('Tandai selesai'),
+                  ),
+                ),
+              ] else
+                const SizedBox(height: 4),
             ],
           ),
         ),
       ),
     );
   }
-
-  DateTime _startOfToday() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day);
-  }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.schedule, required this.overdue});
+class _StatusLabel extends StatelessWidget {
+  const _StatusLabel({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
 
-  final ServiceSchedule schedule;
-  final bool overdue;
+  final String label;
+  final Color color;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final (label, background, foreground) = schedule.isCompleted
-        ? (
-            'Selesai',
-            theme.colorScheme.secondaryContainer,
-            theme.colorScheme.onSecondaryContainer,
-          )
-        : overdue
-        ? (
-            'Terlambat',
-            theme.colorScheme.errorContainer,
-            theme.colorScheme.onErrorContainer,
-          )
-        : (
-            'Menunggu',
-            theme.colorScheme.primaryContainer,
-            theme.colorScheme.onPrimaryContainer,
-          );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w700,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 17, color: color),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _MetaItem extends StatelessWidget {
-  const _MetaItem({required this.icon, required this.label, this.color});
+class _ScheduleLine extends StatelessWidget {
+  const _ScheduleLine({
+    required this.label,
+    required this.icon,
+    this.isOverdue = false,
+  });
 
-  final IconData icon;
   final String label;
-  final Color? color;
+  final IconData icon;
+  final bool isOverdue;
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor =
-        color ?? Theme.of(context).colorScheme.onSurfaceVariant;
+    final color = isOverdue
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.onSurfaceVariant;
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: effectiveColor),
-        const SizedBox(width: 6),
-        Text(label, style: TextStyle(color: effectiveColor)),
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: color),
+          ),
+        ),
       ],
     );
   }

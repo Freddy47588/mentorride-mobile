@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
+import 'package:mentorride/features/service_schedules/presentation/navigation/service_schedule_completion_flow.dart';
+import 'package:mentorride/features/service_schedules/presentation/navigation/service_schedule_navigation.dart';
 import 'package:mentorride/features/service_schedules/presentation/widgets/service_schedule_card.dart';
 import 'package:mentorride/features/service_schedules/providers/service_schedule_providers.dart';
 import 'package:mentorride/features/vehicles/providers/vehicle_providers.dart';
@@ -16,7 +17,7 @@ class ServiceScheduleListScreen extends ConsumerWidget {
     final activeVehicle = ref.watch(activeVehicleProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Jadwal Servis')),
+      appBar: AppBar(title: const Text('Jadwal servis')),
       body: activeVehicle.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => ErrorState(
@@ -39,17 +40,19 @@ class ServiceScheduleListScreen extends ConsumerWidget {
                 name: vehicle.name,
                 plateNumber: vehicle.plateNumber,
               ),
-              const Expanded(child: _ScheduleList()),
+              Expanded(
+                child: _ScheduleList(currentOdometer: vehicle.currentOdometer),
+              ),
             ],
           );
         },
       ),
       floatingActionButton: activeVehicle.value == null
           ? null
-          : FloatingActionButton.extended(
-              onPressed: () => context.push('/schedules/new'),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Tambah jadwal'),
+          : FloatingActionButton(
+              onPressed: () => ServiceScheduleNavigation.openNew<void>(context),
+              tooltip: 'Tambah jadwal',
+              child: const Icon(Icons.add_rounded),
             ),
     );
   }
@@ -76,8 +79,18 @@ class _ActiveVehicleHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: Theme.of(context).textTheme.titleMedium),
-                Text(plateNumber, style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  plateNumber,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
           ),
@@ -88,7 +101,9 @@ class _ActiveVehicleHeader extends StatelessWidget {
 }
 
 class _ScheduleList extends ConsumerWidget {
-  const _ScheduleList();
+  const _ScheduleList({required this.currentOdometer});
+
+  final int currentOdometer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -111,7 +126,7 @@ class _ScheduleList extends ConsumerWidget {
             message:
                 'Tambahkan jadwal agar perawatan kendaraan tidak terlewat.',
             actionLabel: 'Tambah jadwal',
-            onAction: () => context.push('/schedules/new'),
+            onAction: () => ServiceScheduleNavigation.openNew<void>(context),
           );
         }
 
@@ -124,13 +139,17 @@ class _ScheduleList extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
             itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final schedule = items[index];
               return ServiceScheduleCard(
                 schedule: schedule,
+                currentOdometer: currentOdometer,
                 actionsEnabled: !isSubmitting,
-                onTap: () => context.push('/schedules/${schedule.id}'),
+                onTap: () => ServiceScheduleNavigation.openDetail<void>(
+                  context,
+                  schedule.id,
+                ),
                 onComplete: () => _complete(context, ref, schedule),
               );
             },
@@ -145,20 +164,10 @@ class _ScheduleList extends ConsumerWidget {
     WidgetRef ref,
     ServiceSchedule schedule,
   ) async {
-    final completed = await ref
-        .read(serviceScheduleControllerProvider.notifier)
-        .complete(schedule);
-    if (!context.mounted) return;
-
-    final state = ref.read(serviceScheduleControllerProvider);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          completed
-              ? 'Jadwal berhasil ditandai selesai.'
-              : state.errorMessage ?? 'Jadwal belum dapat diperbarui.',
-        ),
-      ),
+    await ServiceScheduleCompletionFlow.run(
+      context: context,
+      ref: ref,
+      schedule: schedule,
     );
   }
 }

@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mentorride/core/utils/formatters.dart';
 import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
+import 'package:mentorride/features/service_schedules/domain/services/service_schedule_due_calculator.dart';
+import 'package:mentorride/features/service_schedules/presentation/navigation/service_schedule_completion_flow.dart';
+import 'package:mentorride/features/service_schedules/presentation/navigation/service_schedule_navigation.dart';
 import 'package:mentorride/features/service_schedules/providers/service_schedule_providers.dart';
+import 'package:mentorride/features/vehicles/providers/vehicle_providers.dart';
 import 'package:mentorride/shared/widgets/error_state.dart';
 
 class ServiceScheduleDetailScreen extends ConsumerStatefulWidget {
@@ -23,6 +27,8 @@ class _ServiceScheduleDetailScreenState
   @override
   Widget build(BuildContext context) {
     final schedule = ref.watch(serviceScheduleByIdProvider(widget.scheduleId));
+    final currentOdometer =
+        ref.watch(activeVehicleProvider).value?.currentOdometer ?? 0;
 
     return schedule.when(
       loading: () => const Scaffold(
@@ -49,13 +55,16 @@ class _ServiceScheduleDetailScreenState
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Detail Jadwal'),
+            title: const Text('Detail jadwal'),
             actions: [
               IconButton(
                 tooltip: 'Edit jadwal',
                 onPressed: _isWorking
                     ? null
-                    : () => context.push('/schedules/${value.id}/edit'),
+                    : () => ServiceScheduleNavigation.openEdit<void>(
+                        context,
+                        value.id,
+                      ),
                 icon: const Icon(Icons.edit_outlined),
               ),
               IconButton(
@@ -72,50 +81,27 @@ class _ServiceScheduleDetailScreenState
           ),
           body: _DetailBody(
             schedule: value,
+            currentOdometer: currentOdometer,
             isWorking: _isWorking,
-            onComplete: () => _confirmComplete(value),
+            onComplete: () => _complete(value),
           ),
         );
       },
     );
   }
 
-  Future<void> _confirmComplete(ServiceSchedule schedule) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Tandai jadwal selesai?'),
-        content: const Text(
-          'Pengingat untuk jadwal ini akan dibatalkan dan status tidak dapat '
-          'dikembalikan dari halaman ini.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Tandai selesai'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted || _isWorking) return;
-
+  Future<void> _complete(ServiceSchedule schedule) async {
+    if (_isWorking) return;
     setState(() => _isWorking = true);
-    final success = await ref
-        .read(serviceScheduleControllerProvider.notifier)
-        .complete(schedule);
-    if (!mounted) return;
-
-    setState(() => _isWorking = false);
-    final state = ref.read(serviceScheduleControllerProvider);
-    _showMessage(
-      success
-          ? 'Jadwal berhasil ditandai selesai.'
-          : state.errorMessage ?? 'Jadwal belum dapat diperbarui.',
-    );
+    try {
+      await ServiceScheduleCompletionFlow.run(
+        context: context,
+        ref: ref,
+        schedule: schedule,
+      );
+    } finally {
+      if (mounted) setState(() => _isWorking = false);
+    }
   }
 
   Future<void> _confirmDelete(ServiceSchedule schedule) async {
@@ -176,24 +162,32 @@ class _DetailAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(title: const Text('Detail Jadwal'));
+    return AppBar(title: const Text('Detail jadwal'));
   }
 }
 
 class _DetailBody extends StatelessWidget {
   const _DetailBody({
     required this.schedule,
+    required this.currentOdometer,
     required this.isWorking,
     required this.onComplete,
   });
 
   final ServiceSchedule schedule;
+  final int currentOdometer;
   final bool isWorking;
   final VoidCallback onComplete;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final dueStatus = ServiceScheduleDueCalculator.calculate(
+      schedule: schedule,
+      now: DateTime.now(),
+      currentOdometer: currentOdometer,
+    );
+    final overdue = !schedule.isCompleted && dueStatus.isOverdue;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -207,15 +201,6 @@ class _DetailBody extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      child: Icon(
-                        Icons.build_circle_outlined,
-                        color: theme.colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,20 +222,38 @@ class _DetailBody extends StatelessWidget {
                 _InfoRow(
                   icon: Icons.flag_outlined,
                   label: 'Status',
-                  value: schedule.status.label,
+                  value: schedule.isCompleted
+                      ? 'Selesai'
+                      : overdue
+                      ? 'Terlambat'
+                      : 'Aktif',
+                  valueColor: overdue ? theme.colorScheme.error : null,
                 ),
                 const SizedBox(height: 14),
                 _InfoRow(
                   icon: Icons.event_outlined,
-                  label: 'Jatuh tempo',
-                  value: AppFormatters.date(schedule.dueDate),
+                  label: 'Tanggal jatuh tempo',
+                  value: schedule.isCompleted
+                      ? AppFormatters.date(schedule.dueDate)
+                      : '${AppFormatters.date(schedule.dueDate)} • '
+                            '${dueStatus.date.label}',
+                  valueColor: !schedule.isCompleted && dueStatus.date.isOverdue
+                      ? theme.colorScheme.error
+                      : null,
                 ),
                 if (schedule.dueOdometer case final odometer?) ...[
                   const SizedBox(height: 14),
                   _InfoRow(
                     icon: Icons.speed_rounded,
-                    label: 'Kilometer',
-                    value: AppFormatters.kilometer(odometer),
+                    label: 'Kilometer jatuh tempo',
+                    value: schedule.isCompleted
+                        ? AppFormatters.kilometer(odometer)
+                        : '${AppFormatters.kilometer(odometer)} • '
+                              '${dueStatus.odometer!.label}',
+                    valueColor:
+                        !schedule.isCompleted && dueStatus.odometer!.isOverdue
+                        ? theme.colorScheme.error
+                        : null,
                   ),
                 ],
               ],
@@ -278,7 +281,7 @@ class _DetailBody extends StatelessWidget {
         ),
         if (!schedule.isCompleted) ...[
           const SizedBox(height: 24),
-          FilledButton.icon(
+          OutlinedButton.icon(
             onPressed: isWorking ? null : onComplete,
             icon: isWorking
                 ? const SizedBox.square(
@@ -299,27 +302,56 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.valueColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20),
-        const SizedBox(width: 10),
-        SizedBox(width: 92, child: Text(label)),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final valueText = Text(
+          value,
+          style: TextStyle(color: valueColor, fontWeight: FontWeight.w600),
+        );
+        if (constraints.maxWidth < 340) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    valueText,
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 10),
+            SizedBox(width: 130, child: Text(label)),
+            Expanded(child: valueText),
+          ],
+        );
+      },
     );
   }
 }
