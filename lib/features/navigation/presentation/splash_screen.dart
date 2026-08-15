@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mentorride/app/theme/app_theme.dart';
+import 'package:mentorride/shared/widgets/app_logo.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -12,11 +13,7 @@ class SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.two_wheeler_rounded,
-                size: 64,
-                color: AppColors.primary,
-              ),
+              AppLogo(size: 112),
               SizedBox(height: 20),
               Text(
                 'MentorRide',

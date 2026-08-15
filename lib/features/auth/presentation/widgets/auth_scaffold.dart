@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mentorride/app/theme/app_theme.dart';
+import 'package:mentorride/shared/widgets/app_logo.dart';
 
 class AuthScaffold extends StatelessWidget {
   const AuthScaffold({
@@ -43,21 +44,9 @@ class AuthScaffold extends StatelessWidget {
                           ),
                         ),
                       const SizedBox(height: 20),
-                      Align(
+                      const Align(
                         alignment: Alignment.centerLeft,
-                        child: Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.two_wheeler_rounded,
-                            color: Colors.white,
-                            size: 34,
-                          ),
-                        ),
+                        child: AppLogo(size: 72),
                       ),
                       const SizedBox(height: 28),
                       Text(

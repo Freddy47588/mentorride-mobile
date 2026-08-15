@@ -7,6 +7,7 @@ import 'package:mentorride/core/utils/validators.dart';
 import 'package:mentorride/features/auth/domain/models/auth_session.dart';
 import 'package:mentorride/features/auth/domain/models/user_profile.dart';
 import 'package:mentorride/features/auth/providers/auth_providers.dart';
+import 'package:mentorride/shared/widgets/app_logo.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -547,7 +548,7 @@ class _AboutCard extends StatelessWidget {
       children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.two_wheeler_rounded),
+          leading: AppLogo(size: 48),
           title: Text('Perawatan motor lebih tertata'),
           subtitle: Padding(
             padding: EdgeInsets.only(top: 4),
