@@ -650,10 +650,7 @@ class _EditNameDialogState extends State<_EditNameDialog> {
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.done,
                   maxLength: 60,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama',
-                    prefixIcon: Icon(Icons.badge_outlined),
-                  ),
+                  decoration: const InputDecoration(labelText: 'Nama'),
                   validator: AppValidators.displayName,
                   onFieldSubmitted: (_) => _submit(),
                 ),

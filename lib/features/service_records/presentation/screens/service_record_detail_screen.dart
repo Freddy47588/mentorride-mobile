@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mentorride/core/errors/app_exception.dart';
 import 'package:mentorride/core/utils/formatters.dart';
 import 'package:mentorride/features/service_records/domain/models/service_record.dart';
 import 'package:mentorride/features/service_records/providers/service_record_providers.dart';
@@ -32,7 +33,10 @@ class _ServiceRecordDetailScreenState
       error: (error, stackTrace) => Scaffold(
         appBar: const _DetailAppBar(),
         body: ErrorState(
-          message: error.toString(),
+          message: userFacingErrorMessage(
+            error,
+            fallback: 'Catatan servis belum dapat dimuat.',
+          ),
           onRetry: () => ref.invalidate(serviceRecordsProvider),
         ),
       ),
@@ -49,7 +53,7 @@ class _ServiceRecordDetailScreenState
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Detail Servis'),
+            title: const Text('Detail servis'),
             actions: [
               IconButton(
                 tooltip: 'Edit catatan',
@@ -121,7 +125,14 @@ class _ServiceRecordDetailScreenState
         const SnackBar(content: Text('Catatan servis berhasil dihapus.')),
       );
     } on Object catch (error) {
-      if (mounted) _showMessage(error.toString());
+      if (mounted) {
+        _showMessage(
+          userFacingErrorMessage(
+            error,
+            fallback: 'Catatan servis belum dapat dihapus. Silakan coba lagi.',
+          ),
+        );
+      }
     } finally {
       if (mounted && _isDeleting) {
         setState(() => _isDeleting = false);
@@ -144,7 +155,7 @@ class _DetailAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(title: const Text('Detail Servis'));
+    return AppBar(title: const Text('Detail servis'));
   }
 }
 
@@ -224,15 +235,18 @@ class _DetailBody extends StatelessWidget {
               const Divider(height: 1),
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 4,
                   children: [
                     Text('Total biaya', style: theme.textTheme.titleMedium),
                     Text(
                       AppFormatters.rupiah(record.totalCost),
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],

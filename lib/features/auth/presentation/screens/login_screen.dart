@@ -54,7 +54,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Email',
                   hintText: 'nama@email.com',
-                  prefixIcon: Icon(Icons.email_outlined),
                 ),
               ),
               const SizedBox(height: 16),
@@ -68,7 +67,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 onFieldSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
                   labelText: 'Kata sandi',
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
                   suffixIcon: IconButton(
                     tooltip: _obscurePassword
                         ? 'Tampilkan kata sandi'

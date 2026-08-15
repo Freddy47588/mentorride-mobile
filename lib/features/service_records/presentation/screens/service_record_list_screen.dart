@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mentorride/core/utils/formatters.dart';
-import 'package:mentorride/features/service_records/domain/models/service_record.dart';
+import 'package:mentorride/features/service_records/presentation/widgets/service_record_timeline_tile.dart';
 import 'package:mentorride/features/service_records/providers/service_record_providers.dart';
 import 'package:mentorride/features/vehicles/providers/vehicle_providers.dart';
 import 'package:mentorride/shared/widgets/empty_state.dart';
@@ -16,7 +16,7 @@ class ServiceRecordListScreen extends ConsumerWidget {
     final activeVehicle = ref.watch(activeVehicleProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Servis')),
+      appBar: AppBar(title: const Text('Riwayat servis')),
       body: activeVehicle.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => ErrorState(
@@ -71,6 +71,7 @@ class _ActiveVehicleHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             Icons.two_wheeler_rounded,
@@ -81,8 +82,20 @@ class _ActiveVehicleHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: Theme.of(context).textTheme.titleMedium),
-                Text(plateNumber, style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  plateNumber,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
           ),
@@ -201,7 +214,7 @@ class _ServiceRecordList extends ConsumerWidget {
     return records.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stackTrace) => ErrorState(
-        message: error.toString(),
+        message: 'Riwayat servis belum dapat dimuat.',
         onRetry: () => ref.invalidate(serviceRecordsProvider),
       ),
       data: (items) {
@@ -236,72 +249,19 @@ class _ServiceRecordList extends ConsumerWidget {
                     ),
                   ],
                 )
-              : ListView.separated(
+              : ListView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                   itemCount: items.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 10),
-                  itemBuilder: (context, index) =>
-                      _ServiceRecordCard(record: items[index]),
+                  itemBuilder: (context, index) => ServiceRecordTimelineTile(
+                    record: items[index],
+                    isFirst: index == 0,
+                    isLast: index == items.length - 1,
+                    onTap: () => context.push('/history/${items[index].id}'),
+                  ),
                 ),
         );
       },
-    );
-  }
-}
-
-class _ServiceRecordCard extends StatelessWidget {
-  const _ServiceRecordCard({required this.record});
-
-  final ServiceRecord record;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/history/${record.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(child: Text(record.serviceDate.day.toString())),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppFormatters.date(record.serviceDate),
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      record.workshop.isEmpty
-                          ? 'Bengkel tidak dicatat'
-                          : record.workshop,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${record.items.length} item • ${AppFormatters.kilometer(record.odometer)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                AppFormatters.rupiah(record.totalCost),
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

@@ -57,7 +57,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 validator: AppValidators.displayName,
                 decoration: const InputDecoration(
                   labelText: 'Nama lengkap atau panggilan',
-                  prefixIcon: Icon(Icons.person_outline_rounded),
                 ),
               ),
               const SizedBox(height: 16),
@@ -72,7 +71,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Email',
                   hintText: 'nama@email.com',
-                  prefixIcon: Icon(Icons.email_outlined),
                 ),
               ),
               const SizedBox(height: 16),
@@ -86,7 +84,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 decoration: InputDecoration(
                   labelText: 'Kata sandi',
                   helperText: 'Minimal 6 karakter',
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
                   suffixIcon: IconButton(
                     tooltip: _obscurePassword
                         ? 'Tampilkan kata sandi'
@@ -116,7 +113,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 onFieldSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
                   labelText: 'Konfirmasi kata sandi',
-                  prefixIcon: const Icon(Icons.lock_reset_rounded),
                   suffixIcon: IconButton(
                     tooltip: _obscureConfirmation
                         ? 'Tampilkan konfirmasi kata sandi'

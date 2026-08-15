@@ -51,7 +51,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               decoration: const InputDecoration(
                 labelText: 'Email',
                 hintText: 'nama@email.com',
-                prefixIcon: Icon(Icons.email_outlined),
               ),
             ),
             const SizedBox(height: 24),

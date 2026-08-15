@@ -11,3 +11,10 @@ class AppException implements Exception {
 class AuthFailure extends AppException {
   const AuthFailure(super.message, {super.code});
 }
+
+String userFacingErrorMessage(Object error, {required String fallback}) {
+  if (error is AppException && error.message.trim().isNotEmpty) {
+    return error.message;
+  }
+  return fallback;
+}

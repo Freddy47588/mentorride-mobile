@@ -27,97 +27,89 @@ class VehicleCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 25,
-                backgroundColor: colorScheme.primaryContainer,
-                foregroundColor: colorScheme.onPrimaryContainer,
-                child: const Icon(Icons.two_wheeler_rounded),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.two_wheeler_rounded,
+                  color: colorScheme.onPrimaryContainer,
+                ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            vehicle.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        if (isActive)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              'Aktif',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: colorScheme.onPrimaryContainer,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                      ],
+                    Text(
+                      vehicle.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text('${vehicle.brand} ${vehicle.model} - ${vehicle.year}'),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${vehicle.brand} ${vehicle.model} · ${vehicle.year}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
+                      spacing: 12,
+                      runSpacing: 5,
                       children: [
-                        _InfoPill(
+                        _VehicleMetadata(
                           icon: Icons.pin_rounded,
                           label: vehicle.plateNumber,
                         ),
-                        _InfoPill(
+                        _VehicleMetadata(
                           icon: Icons.speed_rounded,
                           label: AppFormatters.kilometer(
                             vehicle.currentOdometer,
                           ),
                         ),
+                        if (isActive)
+                          const _VehicleMetadata(
+                            icon: Icons.check_circle_rounded,
+                            label: 'Aktif',
+                            isHighlighted: true,
+                          ),
                       ],
                     ),
                     if (!isActive) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
                           onPressed: isSelecting ? null : onSelect,
-                          icon: isSelecting
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                          ),
+                          child: isSelecting
                               ? const SizedBox.square(
                                   dimension: 16,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(Icons.check_circle_outline_rounded),
-                          label: const Text('Jadikan aktif'),
+                              : const Text('Jadikan aktif'),
                         ),
                       ),
                     ],
                   ],
                 ),
-              ),
-              const SizedBox(width: 4),
-              const Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Icon(Icons.chevron_right_rounded),
               ),
             ],
           ),
@@ -127,29 +119,40 @@ class VehicleCard extends StatelessWidget {
   }
 }
 
-class _InfoPill extends StatelessWidget {
-  const _InfoPill({required this.icon, required this.label});
+class _VehicleMetadata extends StatelessWidget {
+  const _VehicleMetadata({
+    required this.icon,
+    required this.label,
+    this.isHighlighted = false,
+  });
 
   final IconData icon;
   final String label;
+  final bool isHighlighted;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15),
-          const SizedBox(width: 5),
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-        ],
-      ),
+    final foreground = isHighlighted
+        ? colorScheme.primary
+        : colorScheme.onSurfaceVariant;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: foreground),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: foreground,
+              fontWeight: isHighlighted ? FontWeight.w600 : null,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

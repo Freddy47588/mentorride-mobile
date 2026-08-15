@@ -46,9 +46,9 @@ class VehicleListScreen extends ConsumerWidget {
               await ref.read(vehiclesProvider.future);
             },
             child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
               itemCount: vehicles.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final vehicle = vehicles[index];
                 final isActive = activeVehicleValue.value?.id == vehicle.id;
@@ -64,10 +64,10 @@ class VehicleListScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _openAddForm(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Tambah'),
+        tooltip: 'Tambah kendaraan',
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }
