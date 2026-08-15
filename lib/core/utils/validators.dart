@@ -77,4 +77,21 @@ abstract final class AppValidators {
     if (value == null || value.trim().isEmpty) return null;
     return nonNegativeInteger(value, field: field);
   }
+
+  static String? updatedOdometer(
+    String? value, {
+    required int currentOdometer,
+  }) {
+    final required = requiredText(value, field: 'Kilometer baru');
+    if (required != null) return required;
+
+    final parsed = int.tryParse(value!.trim());
+    if (parsed == null || parsed < 0) {
+      return 'Kilometer baru harus berupa angka nonnegatif.';
+    }
+    if (parsed < currentOdometer) {
+      return 'Kilometer baru tidak boleh lebih kecil dari kilometer saat ini.';
+    }
+    return null;
+  }
 }

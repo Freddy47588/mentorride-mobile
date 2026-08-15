@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mentorride/core/errors/app_exception.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 import 'package:mentorride/features/vehicles/domain/repositories/vehicle_repository.dart';
 import 'package:uuid/uuid.dart';
@@ -58,14 +59,73 @@ class FirestoreVehicleRepository implements VehicleRepository {
   }
 
   @override
-  Future<void> updateVehicle(String uid, Vehicle vehicle) {
+  Future<void> updateVehicle(String uid, Vehicle vehicle) async {
     if (vehicle.id.isEmpty) {
       throw ArgumentError.value(vehicle.id, 'vehicle.id', 'ID wajib diisi.');
     }
 
-    return _vehicle(uid, vehicle.id).update({
-      ..._writableFields(vehicle),
-      'updatedAt': FieldValue.serverTimestamp(),
+    final reference = _vehicle(uid, vehicle.id);
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(reference);
+      if (!snapshot.exists) {
+        throw const AppException('Kendaraan tidak ditemukan.');
+      }
+
+      final rawCurrent = snapshot.data()?['currentOdometer'];
+      final current = rawCurrent is num
+          ? rawCurrent.toInt()
+          : int.tryParse(rawCurrent?.toString() ?? '') ?? 0;
+      if (vehicle.currentOdometer < current) {
+        throw const AppException(
+          'Kilometer baru tidak boleh lebih kecil dari kilometer saat ini.',
+        );
+      }
+
+      transaction.update(reference, {
+        ..._writableFields(vehicle),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  @override
+  Future<VehicleOdometerUpdateResult> updateOdometer({
+    required String uid,
+    required String vehicleId,
+    required int odometer,
+  }) {
+    if (vehicleId.isEmpty) {
+      throw const AppException('Kendaraan tidak valid.');
+    }
+    if (odometer < 0) {
+      throw const AppException('Kilometer tidak boleh bernilai negatif.');
+    }
+
+    final reference = _vehicle(uid, vehicleId);
+    return _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(reference);
+      if (!snapshot.exists) {
+        throw const AppException('Kendaraan tidak ditemukan.');
+      }
+
+      final rawCurrent = snapshot.data()?['currentOdometer'];
+      final current = rawCurrent is num
+          ? rawCurrent.toInt()
+          : int.tryParse(rawCurrent?.toString() ?? '') ?? 0;
+      if (odometer < current) {
+        throw const AppException(
+          'Kilometer baru tidak boleh lebih kecil dari kilometer saat ini.',
+        );
+      }
+      if (odometer == current) {
+        return VehicleOdometerUpdateResult.unchanged;
+      }
+
+      transaction.update(reference, {
+        'currentOdometer': odometer,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return VehicleOdometerUpdateResult.updated;
     });
   }
 

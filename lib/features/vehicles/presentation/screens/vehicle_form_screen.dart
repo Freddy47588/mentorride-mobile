@@ -113,7 +113,7 @@ class _VehicleEditorState extends ConsumerState<_VehicleEditor> {
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: [
               Text(
                 _isEditing
@@ -129,7 +129,6 @@ class _VehicleEditorState extends ConsumerState<_VehicleEditor> {
                 decoration: const InputDecoration(
                   labelText: 'Nama kendaraan',
                   hintText: 'Contoh: Motor harian',
-                  prefixIcon: Icon(Icons.badge_outlined),
                 ),
                 validator: (value) =>
                     AppValidators.requiredText(value, field: 'Nama kendaraan'),
@@ -142,7 +141,6 @@ class _VehicleEditorState extends ConsumerState<_VehicleEditor> {
                 decoration: const InputDecoration(
                   labelText: 'Merek',
                   hintText: 'Contoh: Honda',
-                  prefixIcon: Icon(Icons.factory_outlined),
                 ),
                 validator: (value) =>
                     AppValidators.requiredText(value, field: 'Merek'),
@@ -155,50 +153,32 @@ class _VehicleEditorState extends ConsumerState<_VehicleEditor> {
                 decoration: const InputDecoration(
                   labelText: 'Model',
                   hintText: 'Contoh: Vario 160',
-                  prefixIcon: Icon(Icons.two_wheeler_outlined),
                 ),
                 validator: (value) =>
                     AppValidators.requiredText(value, field: 'Model'),
               ),
               const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _yearController,
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.next,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(
-                        labelText: 'Tahun',
-                        hintText: '2024',
-                        prefixIcon: Icon(Icons.calendar_today_outlined),
-                      ),
-                      validator: AppValidators.year,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _plateController,
-                      textCapitalization: TextCapitalization.characters,
-                      textInputAction: TextInputAction.next,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(12),
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'[A-Za-z0-9 -]'),
-                        ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth < 340) {
+                    return Column(
+                      children: [
+                        _buildYearField(),
+                        const SizedBox(height: 16),
+                        _buildPlateField(),
                       ],
-                      decoration: const InputDecoration(
-                        labelText: 'Nomor polisi',
-                        hintText: 'B 1234 XYZ',
-                        prefixIcon: Icon(Icons.pin_outlined),
-                      ),
-                      validator: AppValidators.plateNumber,
-                    ),
-                  ),
-                ],
+                    );
+                  }
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _buildYearField()),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildPlateField()),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -210,10 +190,20 @@ class _VehicleEditorState extends ConsumerState<_VehicleEditor> {
                   labelText: 'Kilometer saat ini',
                   hintText: '0',
                   suffixText: 'km',
-                  prefixIcon: Icon(Icons.speed_rounded),
                 ),
-                validator: (value) =>
-                    AppValidators.nonNegativeInteger(value, field: 'Kilometer'),
+                validator: (value) {
+                  final initial = widget.initialVehicle;
+                  if (initial != null) {
+                    return AppValidators.updatedOdometer(
+                      value,
+                      currentOdometer: initial.currentOdometer,
+                    );
+                  }
+                  return AppValidators.nonNegativeInteger(
+                    value,
+                    field: 'Kilometer',
+                  );
+                },
                 onFieldSubmitted: (_) {
                   if (!actionState.isSubmitting) _submit();
                 },
@@ -233,6 +223,34 @@ class _VehicleEditorState extends ConsumerState<_VehicleEditor> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildYearField() {
+    return TextFormField(
+      controller: _yearController,
+      keyboardType: TextInputType.number,
+      textInputAction: TextInputAction.next,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: const InputDecoration(labelText: 'Tahun', hintText: '2024'),
+      validator: AppValidators.year,
+    );
+  }
+
+  Widget _buildPlateField() {
+    return TextFormField(
+      controller: _plateController,
+      textCapitalization: TextCapitalization.characters,
+      textInputAction: TextInputAction.next,
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(12),
+        FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9 -]')),
+      ],
+      decoration: const InputDecoration(
+        labelText: 'Nomor polisi',
+        hintText: 'B 1234 XYZ',
+      ),
+      validator: AppValidators.plateNumber,
     );
   }
 

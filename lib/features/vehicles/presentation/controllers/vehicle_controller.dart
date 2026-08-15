@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mentorride/core/errors/app_exception.dart';
 import 'package:mentorride/features/auth/providers/auth_providers.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 import 'package:mentorride/features/vehicles/domain/repositories/vehicle_repository.dart';
@@ -53,6 +54,35 @@ class VehicleController extends Notifier<VehicleActionState> {
     }
   }
 
+  Future<VehicleOdometerUpdateResult?> updateOdometer({
+    required String vehicleId,
+    required int odometer,
+  }) async {
+    if (state.isSubmitting) return null;
+    if (vehicleId.isEmpty || odometer < 0) {
+      state = const VehicleActionState(
+        errorMessage: 'Data kilometer tidak valid.',
+      );
+      return null;
+    }
+    final uid = _currentUid();
+    if (uid == null) return null;
+
+    state = const VehicleActionState(isSubmitting: true);
+    try {
+      final result = await _repository.updateOdometer(
+        uid: uid,
+        vehicleId: vehicleId,
+        odometer: odometer,
+      );
+      state = const VehicleActionState();
+      return result;
+    } on Object catch (error) {
+      state = VehicleActionState(errorMessage: _messageFor(error));
+      return null;
+    }
+  }
+
   Future<bool> deleteVehicle(String vehicleId) async {
     if (state.isSubmitting) return false;
     final uid = _currentUid();
@@ -90,6 +120,7 @@ class VehicleController extends Notifier<VehicleActionState> {
   }
 
   String _messageFor(Object error) {
+    if (error is AppException) return error.message;
     if (error is FirebaseException) {
       return switch (error.code) {
         'permission-denied' =>
