@@ -3,14 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mentorride/app/router/app_routes.dart';
 import 'package:mentorride/app/router/auth_redirect.dart';
+import 'package:mentorride/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:mentorride/features/auth/domain/models/auth_session.dart';
 import 'package:mentorride/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:mentorride/features/auth/presentation/screens/login_screen.dart';
 import 'package:mentorride/features/auth/presentation/screens/register_screen.dart';
 import 'package:mentorride/features/auth/providers/auth_providers.dart';
 import 'package:mentorride/features/navigation/presentation/main_navigation_shell.dart';
-import 'package:mentorride/features/navigation/presentation/navigation_placeholder_screen.dart';
 import 'package:mentorride/features/navigation/presentation/splash_screen.dart';
+import 'package:mentorride/features/profile/presentation/screens/profile_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_detail_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_form_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_list_screen.dart';
@@ -138,12 +139,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.home,
-                builder: (context, state) => const NavigationPlaceholderScreen(
-                  title: 'Beranda',
-                  message:
-                      'Ringkasan kendaraan dan perawatan akan tampil di sini.',
-                  icon: Icons.home_rounded,
-                ),
+                builder: (context, state) => const DashboardScreen(),
               ),
             ],
           ),
@@ -214,11 +210,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.profile,
-                builder: (context, state) => const NavigationPlaceholderScreen(
-                  title: 'Profil',
-                  message: 'Informasi akun dan aplikasi akan tampil di sini.',
-                  icon: Icons.person_rounded,
-                ),
+                builder: (context, state) => const ProfileScreen(),
               ),
             ],
           ),
