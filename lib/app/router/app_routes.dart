@@ -10,6 +10,7 @@ abstract final class AppRoutes {
   static const vehicles = '/vehicles';
   static const vehicleNew = '/vehicles/new';
   static const serviceRecordNew = '/history/new';
+  static const serviceScheduleNew = '/schedules/new';
 
   static String vehicleDetail(String vehicleId) => '/vehicles/$vehicleId';
 
@@ -19,5 +20,13 @@ abstract final class AppRoutes {
 
   static String serviceRecordEdit(String recordId) {
     return '/history/$recordId/edit';
+  }
+
+  static String serviceScheduleDetail(String scheduleId) {
+    return '/schedules/$scheduleId';
+  }
+
+  static String serviceScheduleEdit(String scheduleId) {
+    return '/schedules/$scheduleId/edit';
   }
 }

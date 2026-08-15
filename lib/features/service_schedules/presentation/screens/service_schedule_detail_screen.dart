@@ -1,0 +1,325 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:mentorride/core/utils/formatters.dart';
+import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
+import 'package:mentorride/features/service_schedules/providers/service_schedule_providers.dart';
+import 'package:mentorride/shared/widgets/error_state.dart';
+
+class ServiceScheduleDetailScreen extends ConsumerStatefulWidget {
+  const ServiceScheduleDetailScreen({required this.scheduleId, super.key});
+
+  final String scheduleId;
+
+  @override
+  ConsumerState<ServiceScheduleDetailScreen> createState() =>
+      _ServiceScheduleDetailScreenState();
+}
+
+class _ServiceScheduleDetailScreenState
+    extends ConsumerState<ServiceScheduleDetailScreen> {
+  bool _isWorking = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final schedule = ref.watch(serviceScheduleByIdProvider(widget.scheduleId));
+
+    return schedule.when(
+      loading: () => const Scaffold(
+        appBar: _DetailAppBar(),
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stackTrace) => Scaffold(
+        appBar: const _DetailAppBar(),
+        body: ErrorState(
+          message: 'Jadwal servis belum dapat dimuat.',
+          onRetry: () => ref.invalidate(serviceSchedulesProvider),
+        ),
+      ),
+      data: (value) {
+        if (value == null) {
+          return Scaffold(
+            appBar: const _DetailAppBar(),
+            body: ErrorState(
+              message: 'Jadwal servis tidak ditemukan.',
+              onRetry: () => ref.invalidate(serviceSchedulesProvider),
+            ),
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Detail Jadwal'),
+            actions: [
+              IconButton(
+                tooltip: 'Edit jadwal',
+                onPressed: _isWorking
+                    ? null
+                    : () => context.push('/schedules/${value.id}/edit'),
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              IconButton(
+                tooltip: 'Hapus jadwal',
+                onPressed: _isWorking ? null : () => _confirmDelete(value),
+                icon: _isWorking
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline_rounded),
+              ),
+            ],
+          ),
+          body: _DetailBody(
+            schedule: value,
+            isWorking: _isWorking,
+            onComplete: () => _confirmComplete(value),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmComplete(ServiceSchedule schedule) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Tandai jadwal selesai?'),
+        content: const Text(
+          'Pengingat untuk jadwal ini akan dibatalkan dan status tidak dapat '
+          'dikembalikan dari halaman ini.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Tandai selesai'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || _isWorking) return;
+
+    setState(() => _isWorking = true);
+    final success = await ref
+        .read(serviceScheduleControllerProvider.notifier)
+        .complete(schedule);
+    if (!mounted) return;
+
+    setState(() => _isWorking = false);
+    final state = ref.read(serviceScheduleControllerProvider);
+    _showMessage(
+      success
+          ? 'Jadwal berhasil ditandai selesai.'
+          : state.errorMessage ?? 'Jadwal belum dapat diperbarui.',
+    );
+  }
+
+  Future<void> _confirmDelete(ServiceSchedule schedule) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hapus jadwal servis?'),
+        content: const Text(
+          'Jadwal dan pengingat terkait akan dihapus permanen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || _isWorking) return;
+
+    setState(() => _isWorking = true);
+    final success = await ref
+        .read(serviceScheduleControllerProvider.notifier)
+        .delete(schedule);
+    if (!mounted) return;
+
+    if (success) {
+      final messenger = ScaffoldMessenger.of(context);
+      setState(() => _isWorking = false);
+      context.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Jadwal servis berhasil dihapus.')),
+      );
+      return;
+    }
+
+    setState(() => _isWorking = false);
+    final state = ref.read(serviceScheduleControllerProvider);
+    _showMessage(state.errorMessage ?? 'Jadwal belum dapat dihapus.');
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _DetailAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _DetailAppBar();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(title: const Text('Detail Jadwal'));
+  }
+}
+
+class _DetailBody extends StatelessWidget {
+  const _DetailBody({
+    required this.schedule,
+    required this.isWorking,
+    required this.onComplete,
+  });
+
+  final ServiceSchedule schedule;
+  final bool isWorking;
+  final VoidCallback onComplete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: theme.colorScheme.primaryContainer,
+                      child: Icon(
+                        Icons.build_circle_outlined,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            schedule.title,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(schedule.serviceType),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _InfoRow(
+                  icon: Icons.flag_outlined,
+                  label: 'Status',
+                  value: schedule.status.label,
+                ),
+                const SizedBox(height: 14),
+                _InfoRow(
+                  icon: Icons.event_outlined,
+                  label: 'Jatuh tempo',
+                  value: AppFormatters.date(schedule.dueDate),
+                ),
+                if (schedule.dueOdometer case final odometer?) ...[
+                  const SizedBox(height: 14),
+                  _InfoRow(
+                    icon: Icons.speed_rounded,
+                    label: 'Kilometer',
+                    value: AppFormatters.kilometer(odometer),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text('Pengingat', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: schedule.reminderEnabled && !schedule.isCompleted
+                ? _InfoRow(
+                    icon: Icons.notifications_active_outlined,
+                    label: 'Aktif pada',
+                    value: AppFormatters.dateTime(schedule.reminderAt),
+                  )
+                : const _InfoRow(
+                    icon: Icons.notifications_off_outlined,
+                    label: 'Status',
+                    value: 'Pengingat nonaktif',
+                  ),
+          ),
+        ),
+        if (!schedule.isCompleted) ...[
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: isWorking ? null : onComplete,
+            icon: isWorking
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_circle_outline_rounded),
+            label: const Text('Tandai selesai'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 10),
+        SizedBox(width: 92, child: Text(label)),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+}

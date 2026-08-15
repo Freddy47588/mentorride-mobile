@@ -1,19 +1,16 @@
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:mentorride/core/notifications/reminder_scheduler.dart';
 
 abstract interface class VehicleReminderCanceller {
   Future<void> cancelAll(Iterable<int> notificationIds);
 }
 
-class LocalVehicleReminderCanceller implements VehicleReminderCanceller {
-  LocalVehicleReminderCanceller(FlutterLocalNotificationsPlugin plugin)
-    : _plugin = plugin;
+class SchedulerVehicleReminderCanceller implements VehicleReminderCanceller {
+  SchedulerVehicleReminderCanceller(this._scheduler);
 
-  final FlutterLocalNotificationsPlugin _plugin;
+  final ReminderScheduler _scheduler;
 
   @override
   Future<void> cancelAll(Iterable<int> notificationIds) async {
-    for (final id in notificationIds.toSet()) {
-      await _plugin.cancel(id: id);
-    }
+    await _scheduler.cancelMany(notificationIds);
   }
 }

@@ -14,6 +14,9 @@ import 'package:mentorride/features/navigation/presentation/splash_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_detail_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_form_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_list_screen.dart';
+import 'package:mentorride/features/service_schedules/presentation/screens/service_schedule_detail_screen.dart';
+import 'package:mentorride/features/service_schedules/presentation/screens/service_schedule_form_screen.dart';
+import 'package:mentorride/features/service_schedules/presentation/screens/service_schedule_list_screen.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_detail_screen.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_form_screen.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_list_screen.dart';
@@ -180,11 +183,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.schedules,
-                builder: (context, state) => const NavigationPlaceholderScreen(
-                  title: 'Jadwal servis',
-                  message: 'Jadwal dan pengingat servis akan tampil di sini.',
-                  icon: Icons.event_note_rounded,
-                ),
+                builder: (context, state) => const ServiceScheduleListScreen(),
+                routes: [
+                  GoRoute(
+                    parentNavigatorKey: _rootNavigatorKey,
+                    path: 'new',
+                    builder: (context, state) =>
+                        const ServiceScheduleFormScreen(),
+                  ),
+                  GoRoute(
+                    parentNavigatorKey: _rootNavigatorKey,
+                    path: ':scheduleId',
+                    builder: (context, state) => ServiceScheduleDetailScreen(
+                      scheduleId: state.pathParameters['scheduleId']!,
+                    ),
+                  ),
+                  GoRoute(
+                    parentNavigatorKey: _rootNavigatorKey,
+                    path: ':scheduleId/edit',
+                    builder: (context, state) => ServiceScheduleFormScreen(
+                      scheduleId: state.pathParameters['scheduleId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
