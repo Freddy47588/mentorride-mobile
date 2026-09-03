@@ -11,6 +11,8 @@ import 'package:mentorride/features/auth/presentation/screens/register_screen.da
 import 'package:mentorride/features/auth/providers/auth_providers.dart';
 import 'package:mentorride/features/navigation/presentation/main_navigation_shell.dart';
 import 'package:mentorride/features/navigation/presentation/splash_screen.dart';
+import 'package:mentorride/features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'package:mentorride/features/onboarding/providers/onboarding_providers.dart';
 import 'package:mentorride/features/profile/presentation/screens/profile_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_detail_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_form_screen.dart';
@@ -34,6 +36,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   ref.listen<AsyncValue<AuthSession?>>(authStateProvider, (_, _) {
     refreshNotifier.refresh();
   });
+  ref.listen<AsyncValue<bool>>(onboardingStatusProvider, (_, _) {
+    refreshNotifier.refresh();
+  });
 
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -41,14 +46,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     refreshListenable: refreshNotifier,
     redirect: (context, state) {
       final authState = ref.read(authStateProvider);
-      final status = authState.when(
+      final authStatus = authState.when(
         data: (session) => session == null
             ? AuthAccessStatus.unauthenticated
             : AuthAccessStatus.authenticated,
         error: (_, _) => AuthAccessStatus.unauthenticated,
         loading: () => AuthAccessStatus.loading,
       );
-      return authRedirect(status: status, location: state.uri.path);
+      final onboardingStatus = ref
+          .read(onboardingStatusProvider)
+          .when(
+            data: (completed) => completed
+                ? OnboardingAccessStatus.completed
+                : OnboardingAccessStatus.pending,
+            error: (_, _) => OnboardingAccessStatus.pending,
+            loading: () => OnboardingAccessStatus.loading,
+          );
+      return appRedirect(
+        authStatus: authStatus,
+        onboardingStatus: onboardingStatus,
+        location: state.uri.path,
+      );
     },
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(title: const Text('Halaman tidak ditemukan')),
@@ -82,53 +100,91 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.onboarding,
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: const OnboardingScreen(),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
         path: AppRoutes.login,
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: const LoginScreen(),
+        ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: AppRoutes.register,
-        builder: (context, state) => const RegisterScreen(),
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: const RegisterScreen(),
+        ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: AppRoutes.forgotPassword,
-        builder: (context, state) => const ForgotPasswordScreen(),
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: const ForgotPasswordScreen(),
+        ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: AppRoutes.vehicles,
-        builder: (context, state) => VehicleListScreen(
-          onAddVehicle: () => context.push(AppRoutes.vehicleNew),
-          onOpenVehicle: (vehicleId) {
-            context.push(AppRoutes.vehicleDetail(vehicleId));
-          },
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: VehicleListScreen(
+            onAddVehicle: () => context.push(AppRoutes.vehicleNew),
+            onOpenVehicle: (vehicleId) {
+              context.push(AppRoutes.vehicleDetail(vehicleId));
+            },
+          ),
         ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: AppRoutes.vehicleNew,
-        builder: (context, state) => const VehicleFormScreen(),
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: const VehicleFormScreen(),
+        ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/vehicles/:vehicleId',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final vehicleId = state.pathParameters['vehicleId']!;
-          return VehicleDetailScreen(
-            vehicleId: vehicleId,
-            onEditVehicle: (_) {
-              context.push(AppRoutes.vehicleEdit(vehicleId));
-            },
-            onDeleted: () => context.pop(),
+          return _transitionPage(
+            context: context,
+            state: state,
+            child: VehicleDetailScreen(
+              vehicleId: vehicleId,
+              onEditVehicle: (_) {
+                context.push(AppRoutes.vehicleEdit(vehicleId));
+              },
+              onDeleted: () => context.pop(),
+            ),
           );
         },
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/vehicles/:vehicleId/edit',
-        builder: (context, state) =>
-            VehicleFormScreen(vehicleId: state.pathParameters['vehicleId']!),
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: VehicleFormScreen(
+            vehicleId: state.pathParameters['vehicleId']!,
+          ),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -154,21 +210,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     parentNavigatorKey: _rootNavigatorKey,
                     path: 'new',
-                    builder: (context, state) =>
-                        const ServiceRecordFormScreen(),
+                    pageBuilder: (context, state) => _transitionPage(
+                      context: context,
+                      state: state,
+                      child: const ServiceRecordFormScreen(),
+                    ),
                   ),
                   GoRoute(
                     parentNavigatorKey: _rootNavigatorKey,
                     path: ':recordId',
-                    builder: (context, state) => ServiceRecordDetailScreen(
-                      recordId: state.pathParameters['recordId']!,
+                    pageBuilder: (context, state) => _transitionPage(
+                      context: context,
+                      state: state,
+                      child: ServiceRecordDetailScreen(
+                        recordId: state.pathParameters['recordId']!,
+                      ),
                     ),
                   ),
                   GoRoute(
                     parentNavigatorKey: _rootNavigatorKey,
                     path: ':recordId/edit',
-                    builder: (context, state) => ServiceRecordFormScreen(
-                      recordId: state.pathParameters['recordId']!,
+                    pageBuilder: (context, state) => _transitionPage(
+                      context: context,
+                      state: state,
+                      child: ServiceRecordFormScreen(
+                        recordId: state.pathParameters['recordId']!,
+                      ),
                     ),
                   ),
                 ],
@@ -185,25 +252,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     parentNavigatorKey: _rootNavigatorKey,
                     path: 'new',
-                    builder: (context, state) {
+                    pageBuilder: (context, state) {
                       final extra = state.extra;
-                      return ServiceScheduleFormScreen(
-                        prefill: extra is ServiceSchedulePrefill ? extra : null,
+                      return _transitionPage(
+                        context: context,
+                        state: state,
+                        child: ServiceScheduleFormScreen(
+                          prefill: extra is ServiceSchedulePrefill
+                              ? extra
+                              : null,
+                        ),
                       );
                     },
                   ),
                   GoRoute(
                     parentNavigatorKey: _rootNavigatorKey,
                     path: ':scheduleId',
-                    builder: (context, state) => ServiceScheduleDetailScreen(
-                      scheduleId: state.pathParameters['scheduleId']!,
+                    pageBuilder: (context, state) => _transitionPage(
+                      context: context,
+                      state: state,
+                      child: ServiceScheduleDetailScreen(
+                        scheduleId: state.pathParameters['scheduleId']!,
+                      ),
                     ),
                   ),
                   GoRoute(
                     parentNavigatorKey: _rootNavigatorKey,
                     path: ':scheduleId/edit',
-                    builder: (context, state) => ServiceScheduleFormScreen(
-                      scheduleId: state.pathParameters['scheduleId']!,
+                    pageBuilder: (context, state) => _transitionPage(
+                      context: context,
+                      state: state,
+                      child: ServiceScheduleFormScreen(
+                        scheduleId: state.pathParameters['scheduleId']!,
+                      ),
                     ),
                   ),
                 ],
@@ -233,4 +314,43 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   void refresh() => notifyListeners();
+}
+
+CustomTransitionPage<void> _transitionPage({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  final disableAnimations =
+      MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+  final transitionDuration = disableAnimations
+      ? Duration.zero
+      : const Duration(milliseconds: 220);
+  final reverseTransitionDuration = disableAnimations
+      ? Duration.zero
+      : const Duration(milliseconds: 180);
+
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    transitionDuration: transitionDuration,
+    reverseTransitionDuration: reverseTransitionDuration,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curvedAnimation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.025),
+            end: Offset.zero,
+          ).animate(curvedAnimation),
+          child: child,
+        ),
+      );
+    },
+  );
 }

@@ -7,26 +7,49 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+
+    return Scaffold(
       body: SafeArea(
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppLogo(size: 112),
-              SizedBox(height: 20),
-              Text(
-                'MentorRide',
-                style: TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: disableAnimations
+                    ? Duration.zero
+                    : const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value,
+                    child: Transform.scale(
+                      scale: 0.96 + (0.04 * value),
+                      child: child,
+                    ),
+                  );
+                },
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppLogo(size: 112),
+                    SizedBox(height: 20),
+                    Text(
+                      'MentorRide',
+                      style: TextStyle(
+                        color: AppColors.navy,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 28),
-              CircularProgressIndicator(),
-              SizedBox(height: 12),
-              Text('Menyiapkan aplikasi...'),
+              const SizedBox(height: 28),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 12),
+              const Text('Menyiapkan aplikasi...'),
             ],
           ),
         ),

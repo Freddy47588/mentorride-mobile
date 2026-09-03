@@ -67,4 +67,71 @@ void main() {
       );
     });
   });
+
+  group('appRedirect', () {
+    test('menunggu status onboarding di splash', () {
+      expect(
+        appRedirect(
+          authStatus: AuthAccessStatus.unauthenticated,
+          onboardingStatus: OnboardingAccessStatus.loading,
+          location: AppRoutes.home,
+        ),
+        AppRoutes.splash,
+      );
+      expect(
+        appRedirect(
+          authStatus: AuthAccessStatus.loading,
+          onboardingStatus: OnboardingAccessStatus.loading,
+          location: AppRoutes.splash,
+        ),
+        isNull,
+      );
+    });
+
+    test('fresh install hanya dapat membuka onboarding', () {
+      expect(
+        appRedirect(
+          authStatus: AuthAccessStatus.unauthenticated,
+          onboardingStatus: OnboardingAccessStatus.pending,
+          location: AppRoutes.splash,
+        ),
+        AppRoutes.onboarding,
+      );
+      expect(
+        appRedirect(
+          authStatus: AuthAccessStatus.authenticated,
+          onboardingStatus: OnboardingAccessStatus.pending,
+          location: AppRoutes.onboarding,
+        ),
+        isNull,
+      );
+    });
+
+    test('onboarding selesai kembali mengikuti status autentikasi', () {
+      expect(
+        appRedirect(
+          authStatus: AuthAccessStatus.unauthenticated,
+          onboardingStatus: OnboardingAccessStatus.completed,
+          location: AppRoutes.onboarding,
+        ),
+        AppRoutes.login,
+      );
+      expect(
+        appRedirect(
+          authStatus: AuthAccessStatus.authenticated,
+          onboardingStatus: OnboardingAccessStatus.completed,
+          location: AppRoutes.onboarding,
+        ),
+        AppRoutes.home,
+      );
+      expect(
+        appRedirect(
+          authStatus: AuthAccessStatus.authenticated,
+          onboardingStatus: OnboardingAccessStatus.completed,
+          location: AppRoutes.history,
+        ),
+        isNull,
+      );
+    });
+  });
 }
