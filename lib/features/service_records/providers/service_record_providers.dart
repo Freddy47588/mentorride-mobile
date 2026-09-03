@@ -2,9 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mentorride/core/firebase/firebase_providers.dart';
 import 'package:mentorride/features/auth/providers/auth_providers.dart';
 import 'package:mentorride/features/service_records/data/repositories/firestore_service_record_repository.dart';
+import 'package:mentorride/features/service_records/domain/models/maintenance_statistics.dart';
 import 'package:mentorride/features/service_records/domain/models/service_record.dart';
+import 'package:mentorride/features/service_records/domain/models/service_record_filter.dart';
 import 'package:mentorride/features/service_records/domain/repositories/service_record_repository.dart';
+import 'package:mentorride/features/service_records/domain/services/maintenance_statistics_calculator.dart';
+import 'package:mentorride/features/service_records/domain/services/service_record_query.dart';
 import 'package:mentorride/features/vehicles/providers/vehicle_providers.dart';
+
+export 'package:mentorride/features/service_records/domain/models/service_record_filter.dart';
 
 final serviceRecordRepositoryProvider = Provider<ServiceRecordRepository>((
   ref,
@@ -47,25 +53,6 @@ final serviceRecordByIdProvider =
       });
     });
 
-enum ServiceRecordFilterType { all, month, year }
-
-class ServiceRecordFilter {
-  const ServiceRecordFilter({required this.type, required this.anchor});
-
-  final ServiceRecordFilterType type;
-  final DateTime anchor;
-
-  ServiceRecordFilter copyWith({
-    ServiceRecordFilterType? type,
-    DateTime? anchor,
-  }) {
-    return ServiceRecordFilter(
-      type: type ?? this.type,
-      anchor: anchor ?? this.anchor,
-    );
-  }
-}
-
 final serviceRecordFilterProvider =
     NotifierProvider<ServiceRecordFilterController, ServiceRecordFilter>(
       ServiceRecordFilterController.new,
@@ -88,6 +75,23 @@ class ServiceRecordFilterController extends Notifier<ServiceRecordFilter> {
     state = state.copyWith(anchor: anchor);
   }
 
+  void updateQuery(String query) {
+    state = state.copyWith(query: query);
+  }
+
+  void updateCostRange({int? minimumCost, int? maximumCost}) {
+    state = state.copyWith(
+      minimumCost: minimumCost,
+      maximumCost: maximumCost,
+      clearMinimumCost: minimumCost == null,
+      clearMaximumCost: maximumCost == null,
+    );
+  }
+
+  void clearCostRange() {
+    state = state.copyWith(clearMinimumCost: true, clearMaximumCost: true);
+  }
+
   void reset() {
     state = ServiceRecordFilter(
       type: ServiceRecordFilterType.all,
@@ -100,18 +104,20 @@ final filteredServiceRecordsProvider =
     Provider<AsyncValue<List<ServiceRecord>>>((ref) {
       final filter = ref.watch(serviceRecordFilterProvider);
       return ref.watch(serviceRecordsProvider).whenData((records) {
-        return records
-            .where((record) {
-              final serviceDate = record.serviceDate.toLocal();
-              return switch (filter.type) {
-                ServiceRecordFilterType.all => true,
-                ServiceRecordFilterType.month =>
-                  serviceDate.year == filter.anchor.year &&
-                      serviceDate.month == filter.anchor.month,
-                ServiceRecordFilterType.year =>
-                  serviceDate.year == filter.anchor.year,
-              };
-            })
-            .toList(growable: false);
+        return ServiceRecordQuery.apply(records: records, filter: filter);
       });
+    });
+
+final maintenanceStatisticsProvider =
+    Provider<AsyncValue<MaintenanceStatistics>>((ref) {
+      return ref
+          .watch(serviceRecordsProvider)
+          .whenData(MaintenanceStatisticsCalculator.calculate);
+    });
+
+final filteredMaintenanceStatisticsProvider =
+    Provider<AsyncValue<MaintenanceStatistics>>((ref) {
+      return ref
+          .watch(filteredServiceRecordsProvider)
+          .whenData(MaintenanceStatisticsCalculator.calculate);
     });
