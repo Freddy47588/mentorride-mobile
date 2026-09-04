@@ -13,6 +13,11 @@ input pengguna dan disimpan per akun di Cloud Firestore.
 - CRUD kendaraan, pilihan kendaraan aktif yang disimpan per pengguna, dan
   pembaruan odometer cepat. Nilai odometer dijaga tidak pernah turun melalui
   transaksi Firestore; nilai yang sama diperlakukan sebagai tanpa perubahan.
+- Arsip kendaraan yang mempertahankan seluruh riwayat, jadwal, dan log
+  kilometer. Kendaraan arsip tidak dapat menjadi kendaraan aktif dan dapat
+  dipulihkan atau dihapus permanen dengan konfirmasi kuat.
+- Riwayat kenaikan odometer dengan sumber pembaruan manual atau riwayat servis,
+  grafik 30 hari sampai 1 tahun, serta statistik pemakaian bulanan.
 - Riwayat servis dengan beberapa item per transaksi, total biaya otomatis,
   pencarian lokal berdasarkan bengkel, komponen, dan catatan, filter periode
   dan biaya, serta pembaruan odometer kendaraan secara transaksional.
@@ -23,6 +28,9 @@ input pengguna dan disimpan per akun di Cloud Firestore.
   dibagikan melalui Android share sheet tanpa izin penyimpanan lama.
 - Preset perawatan lokal untuk membantu mengisi komponen dan jenis servis tanpa
   mengambil dataset eksternal.
+- Kondisi Perawatan dan estimasi servis berikutnya dihitung secara deterministik
+  dari preset lokal, riwayat, jadwal, tanggal, dan odometer. Persentase yang
+  ditampilkan menilai catatan perawatan, bukan kesehatan mesin.
 - Jadwal servis dengan tanggal jatuh tempo dan kilometer jatuh tempo opsional,
   kalkulator status bersama untuk kedua dimensi, pengingat lokal, status
   selesai, dan ID notifikasi yang stabil.
@@ -30,7 +38,10 @@ input pengguna dan disimpan per akun di Cloud Firestore.
   servis yang sama. Tanggal wajib dipilih ulang; kilometer opsional dan pilihan
   pengingat tidak diwarisi.
 - Dashboard kendaraan aktif, servis terakhir, jadwal terdekat, biaya bulan dan
-  tahun berjalan, serta grafik biaya enam bulan.
+  tahun berjalan, ringkasan kondisi perawatan, serta grafik biaya enam bulan.
+- Kalender perawatan bulanan dengan status jadwal bersama, backup/restore JSON
+  lokal dengan remapping ID, pilihan daftar/timeline riwayat servis, dan tema
+  Sistem, Terang, atau Gelap.
 - Antarmuka Material 3 berbahasa Indonesia dengan loading, error, empty state,
   validasi formulir, snackbar, dialog konfirmasi, dan animasi ringan yang
   menghormati pengaturan pengurangan gerakan perangkat.
@@ -46,6 +57,17 @@ input pengguna dan disimpan per akun di Cloud Firestore.
 - `shared_preferences`, `uuid`, `intl`, dan `fl_chart`
 - `pdf`, `path_provider`, dan `share_plus` untuk membuat, menyimpan sementara,
   dan membagikan laporan servis di perangkat
+- `file_picker` untuk memilih backup JSON lokal dan `package_info_plus` untuk
+  menampilkan versi aplikasi
+
+## Arsitektur Spark-only
+
+MentorRide tetap kompatibel dengan Firebase Spark. Layanan Firebase yang dipakai
+hanya Firebase Authentication dan Cloud Firestore. Aplikasi tidak menggunakan
+Firebase Storage, Cloud Functions, Firebase Messaging, Firebase Extensions,
+backend tambahan, atau layanan Google Cloud yang memerlukan billing. Preset
+perawatan tetap menjadi data referensi lokal dan file backup dibuat di
+penyimpanan sementara perangkat sebelum dibagikan.
 
 ## Struktur folder
 
@@ -94,6 +116,12 @@ users/{uid}
 Nominal Rupiah, kilometer, tahun, dan ID notifikasi disimpan sebagai integer.
 `createdAt` dan `updatedAt` ditulis dengan `FieldValue.serverTimestamp()` dan
 dapat sementara bernilai `null` sebelum write lokal dikonfirmasi server.
+
+Dokumen kendaraan juga memiliki `isArchived` dengan default kompatibel
+`false`. Kenaikan kilometer membuat dokumen audit di
+`users/{uid}/vehicles/{vehicleId}/odometer_logs/{logId}` berisi integer
+`odometer`, server timestamp `recordedAt`, dan `source` berupa `manual_update`
+atau `service_record`.
 
 ## Konfigurasi Firebase
 
@@ -144,8 +172,10 @@ sampai data odometer di aplikasi diperbarui.
 ## Firestore Security Rules
 
 `firestore.rules` hanya mengizinkan pengguna terautentikasi mengakses profil,
-kendaraan, riwayat servis, dan jadwal di bawah `users/{uid}` miliknya. Semua path
-lain ditolak. Query saat ini tidak memerlukan compound index, sehingga
+kendaraan, riwayat servis, jadwal, dan log odometer di bawah `users/{uid}`
+miliknya. Log odometer tidak dapat diedit; penghapusan hanya diizinkan bagi
+pemilik untuk mendukung penghapusan permanen kendaraan. Semua path lain
+ditolak. Query saat ini tidak memerlukan compound index, sehingga
 `firestore.indexes.json` tetap kosong.
 
 Write dokumen kendaraan juga mewajibkan `currentOdometer` berupa integer
