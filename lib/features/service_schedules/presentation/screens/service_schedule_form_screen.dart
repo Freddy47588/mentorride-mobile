@@ -141,6 +141,7 @@ class _ServiceScheduleFormState extends ConsumerState<_ServiceScheduleForm> {
         child: Form(
           key: _formKey,
           child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             children: [
               if (_isFollowUp) ...[
@@ -273,36 +274,48 @@ class _ServiceScheduleFormState extends ConsumerState<_ServiceScheduleForm> {
                                   'dipilih.',
                       ),
                     ),
-                    if (_reminderEnabled) ...[
-                      const Divider(height: 1),
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            _PickerField(
-                              icon: Icons.event_outlined,
-                              label: 'Tanggal pengingat *',
-                              value: _reminderAt == null
-                                  ? 'Pilih tanggal'
-                                  : AppFormatters.date(_reminderAt!),
-                              enabled: !_isSubmitting,
-                              onTap: _pickReminderDate,
-                            ),
-                            const SizedBox(height: 12),
-                            _PickerField(
-                              icon: Icons.schedule_outlined,
-                              label: 'Waktu pengingat *',
-                              value:
-                                  _reminderAt == null || !_reminderTimeSelected
-                                  ? 'Pilih waktu'
-                                  : _formatTime(_reminderAt!),
-                              enabled: !_isSubmitting,
-                              onTap: _pickReminderTime,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    AnimatedSize(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _reminderEnabled
+                          ? Column(
+                              children: [
+                                const Divider(height: 1),
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    children: [
+                                      _PickerField(
+                                        icon: Icons.event_outlined,
+                                        label: 'Tanggal pengingat *',
+                                        value: _reminderAt == null
+                                            ? 'Pilih tanggal'
+                                            : AppFormatters.date(_reminderAt!),
+                                        enabled: !_isSubmitting,
+                                        onTap: _pickReminderDate,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _PickerField(
+                                        icon: Icons.schedule_outlined,
+                                        label: 'Waktu pengingat *',
+                                        value:
+                                            _reminderAt == null ||
+                                                !_reminderTimeSelected
+                                            ? 'Pilih waktu'
+                                            : _formatTime(_reminderAt!),
+                                        enabled: !_isSubmitting,
+                                        onTap: _pickReminderTime,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ],
                 ),
               ),

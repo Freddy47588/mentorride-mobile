@@ -84,6 +84,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return RefreshIndicator(
       onRefresh: _refreshAll,
       child: ListView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         children: [

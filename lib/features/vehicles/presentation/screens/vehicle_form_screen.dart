@@ -113,6 +113,7 @@ class _VehicleEditorState extends ConsumerState<_VehicleEditor> {
         child: Form(
           key: _formKey,
           child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: [
               Text(

@@ -118,21 +118,28 @@ class VehicleDetailScreen extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: 24),
-              if (!isActive)
-                FilledButton.icon(
-                  onPressed: activeVehicle.isLoading
-                      ? null
-                      : () => _selectVehicle(context, ref, vehicle),
-                  icon: activeVehicle.isLoading
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check_circle_outline_rounded),
-                  label: const Text('Jadikan kendaraan aktif'),
-                )
-              else
-                const _ActiveNotice(),
+              AnimatedSwitcher(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 220),
+                child: !isActive
+                    ? FilledButton.icon(
+                        key: const ValueKey('select-vehicle'),
+                        onPressed: activeVehicle.isLoading
+                            ? null
+                            : () => _selectVehicle(context, ref, vehicle),
+                        icon: activeVehicle.isLoading
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.check_circle_outline_rounded),
+                        label: const Text('Jadikan kendaraan aktif'),
+                      )
+                    : const _ActiveNotice(key: ValueKey('active-vehicle')),
+              ),
               if (actionState.isSubmitting) ...[
                 const SizedBox(height: 16),
                 const LinearProgressIndicator(),
@@ -348,15 +355,28 @@ class _DetailRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(icon),
-          title: Text(label),
-          trailing: Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+        Semantics(
+          label: '$label: $value',
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 4, child: Text(label)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 5,
+                    child: Text(
+                      value,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -367,7 +387,7 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _ActiveNotice extends StatelessWidget {
-  const _ActiveNotice();
+  const _ActiveNotice({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -386,11 +406,14 @@ class _ActiveNotice extends StatelessWidget {
             color: colorScheme.onSecondaryContainer,
           ),
           const SizedBox(width: 8),
-          Text(
-            'Kendaraan ini sedang aktif',
-            style: TextStyle(
-              color: colorScheme.onSecondaryContainer,
-              fontWeight: FontWeight.w600,
+          Expanded(
+            child: Text(
+              'Kendaraan ini sedang aktif',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: colorScheme.onSecondaryContainer,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

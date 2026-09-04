@@ -18,51 +18,66 @@ class VehicleListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final vehiclesValue = ref.watch(vehiclesProvider);
     final activeVehicleValue = ref.watch(activeVehicleProvider);
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Kendaraan')),
-      body: vehiclesValue.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => ErrorState(
-          message: 'Daftar kendaraan belum dapat dimuat.',
-          onRetry: () => ref.invalidate(vehiclesProvider),
-        ),
-        data: (vehicles) {
-          if (vehicles.isEmpty) {
-            return EmptyState(
-              icon: Icons.two_wheeler_rounded,
-              title: 'Belum ada kendaraan',
-              message:
-                  'Tambahkan sepeda motor untuk mulai mencatat servis dan '
-                  'jadwal perawatan.',
-              actionLabel: 'Tambah kendaraan',
-              onAction: () => _openAddForm(context),
-            );
-          }
+      body: AnimatedSwitcher(
+        duration: duration,
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: vehiclesValue.when(
+          loading: () => const Center(
+            key: ValueKey('vehicle-loading'),
+            child: CircularProgressIndicator(),
+          ),
+          error: (error, stackTrace) => ErrorState(
+            key: const ValueKey('vehicle-error'),
+            message: 'Daftar kendaraan belum dapat dimuat.',
+            onRetry: () => ref.invalidate(vehiclesProvider),
+          ),
+          data: (vehicles) {
+            if (vehicles.isEmpty) {
+              return EmptyState(
+                key: const ValueKey('vehicle-empty'),
+                icon: Icons.two_wheeler_rounded,
+                title: 'Belum ada kendaraan',
+                message:
+                    'Tambahkan sepeda motor untuk mulai mencatat servis dan '
+                    'jadwal perawatan.',
+                actionLabel: 'Tambah kendaraan',
+                onAction: () => _openAddForm(context),
+              );
+            }
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(vehiclesProvider);
-              await ref.read(vehiclesProvider.future);
-            },
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
-              itemCount: vehicles.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final vehicle = vehicles[index];
-                final isActive = activeVehicleValue.value?.id == vehicle.id;
-                return VehicleCard(
-                  vehicle: vehicle,
-                  isActive: isActive,
-                  isSelecting: activeVehicleValue.isLoading,
-                  onTap: () => _openDetail(context, vehicle),
-                  onSelect: () => _selectVehicle(context, ref, vehicle),
-                );
+            return RefreshIndicator(
+              key: const ValueKey('vehicle-list'),
+              onRefresh: () async {
+                ref.invalidate(vehiclesProvider);
+                await ref.read(vehiclesProvider.future);
               },
-            ),
-          );
-        },
+              child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
+                itemCount: vehicles.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final vehicle = vehicles[index];
+                  final isActive = activeVehicleValue.value?.id == vehicle.id;
+                  return VehicleCard(
+                    vehicle: vehicle,
+                    isActive: isActive,
+                    isSelecting: activeVehicleValue.isLoading,
+                    onTap: () => _openDetail(context, vehicle),
+                    onSelect: () => _selectVehicle(context, ref, vehicle),
+                  );
+                },
+              ),
+            );
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openAddForm(context),

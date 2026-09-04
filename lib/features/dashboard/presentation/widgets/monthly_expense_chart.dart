@@ -97,7 +97,9 @@ class MonthlyExpenseChart extends StatelessWidget {
                 ),
             ],
           ),
-          duration: const Duration(milliseconds: 350),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 260),
         ),
       ),
     );

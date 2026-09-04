@@ -6,9 +6,10 @@ import 'package:mentorride/features/dashboard/presentation/widgets/monthly_expen
 import 'package:mentorride/features/service_records/domain/models/service_record.dart';
 import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
 import 'package:mentorride/features/service_schedules/domain/services/service_schedule_due_calculator.dart';
+import 'package:mentorride/features/service_schedules/presentation/widgets/service_schedule_status_badge.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 
-class DashboardOverview extends StatelessWidget {
+class DashboardOverview extends StatefulWidget {
   const DashboardOverview({
     required this.summary,
     required this.now,
@@ -29,35 +30,109 @@ class DashboardOverview extends StatelessWidget {
   final VoidCallback onUpdateOdometer;
 
   @override
+  State<DashboardOverview> createState() => _DashboardOverviewState();
+}
+
+class _DashboardOverviewState extends State<DashboardOverview>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardOverview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.summary.activeVehicle?.id !=
+        widget.summary.activeVehicle?.id) {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final vehicle = summary.activeVehicle!;
+    final vehicle = widget.summary.activeVehicle!;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       child: ListView(
         key: const Key('dashboard-overview'),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          _ActiveVehiclePanel(
-            vehicle: vehicle,
-            onManageVehicles: onManageVehicles,
-            onUpdateOdometer: onUpdateOdometer,
+          _DashboardEntrance(
+            animation: _animation(0, 0.55, reduceMotion),
+            child: _ActiveVehiclePanel(
+              vehicle: vehicle,
+              onManageVehicles: widget.onManageVehicles,
+              onUpdateOdometer: widget.onUpdateOdometer,
+            ),
           ),
           const SizedBox(height: 12),
-          _QuickActions(
-            onAddService: onAddService,
-            onAddSchedule: onAddSchedule,
+          _DashboardEntrance(
+            animation: _animation(0.12, 0.67, reduceMotion),
+            child: _QuickActions(
+              onAddService: widget.onAddService,
+              onAddSchedule: widget.onAddSchedule,
+            ),
           ),
           const SizedBox(height: 20),
-          _MaintenanceOverview(
-            latestService: summary.latestService,
-            nearestSchedule: summary.nearestPendingSchedule,
-            currentOdometer: vehicle.currentOdometer,
-            now: now,
+          _DashboardEntrance(
+            animation: _animation(0.25, 0.8, reduceMotion),
+            child: _MaintenanceOverview(
+              latestService: widget.summary.latestService,
+              nearestSchedule: widget.summary.nearestPendingSchedule,
+              currentOdometer: vehicle.currentOdometer,
+              now: widget.now,
+            ),
           ),
           const SizedBox(height: 16),
-          _ExpenseOverview(summary: summary, now: now),
+          _DashboardEntrance(
+            animation: _animation(0.38, 1, reduceMotion),
+            child: _ExpenseOverview(summary: widget.summary, now: widget.now),
+          ),
         ],
+      ),
+    );
+  }
+
+  Animation<double> _animation(double begin, double end, bool reduceMotion) {
+    if (reduceMotion) return const AlwaysStoppedAnimation(1);
+    return CurvedAnimation(
+      parent: _controller,
+      curve: Interval(begin, end, curve: Curves.easeOutCubic),
+    );
+  }
+}
+
+class _DashboardEntrance extends StatelessWidget {
+  const _DashboardEntrance({required this.animation, required this.child});
+
+  final Animation<double> animation;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: animation,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.035),
+          end: Offset.zero,
+        ).animate(animation),
+        child: child,
       ),
     );
   }
@@ -137,6 +212,7 @@ class _ActiveVehiclePanel extends StatelessWidget {
                 child: _VehicleMetric(
                   label: 'Kilometer',
                   value: AppFormatters.kilometer(vehicle.currentOdometer),
+                  animateValue: true,
                 ),
               ),
             ],
@@ -160,10 +236,15 @@ class _ActiveVehiclePanel extends StatelessWidget {
 }
 
 class _VehicleMetric extends StatelessWidget {
-  const _VehicleMetric({required this.label, required this.value});
+  const _VehicleMetric({
+    required this.label,
+    required this.value,
+    this.animateValue = false,
+  });
 
   final String label;
   final String value;
+  final bool animateValue;
 
   @override
   Widget build(BuildContext context) {
@@ -177,16 +258,46 @@ class _VehicleMetric extends StatelessWidget {
           ).textTheme.bodySmall?.copyWith(color: Colors.white60),
         ),
         const SizedBox(height: 3),
-        Text(
-          value,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        if (animateValue)
+          AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutCubic,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.15),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: _VehicleMetricValue(key: ValueKey(value), value: value),
+          )
+        else
+          _VehicleMetricValue(value: value),
       ],
+    );
+  }
+}
+
+class _VehicleMetricValue extends StatelessWidget {
+  const _VehicleMetricValue({required this.value, super.key});
+
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      value,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }
@@ -356,6 +467,14 @@ class _NearestScheduleSummary extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(value.serviceType, maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ServiceScheduleStatusBadge(
+              schedule: value,
+              dueStatus: dueStatus,
+            ),
+          ),
           const SizedBox(height: 10),
           _DueLine(
             icon: Icons.event_outlined,

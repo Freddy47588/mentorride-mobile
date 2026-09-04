@@ -121,161 +121,177 @@ class _ServiceRecordEditorState extends ConsumerState<_ServiceRecordEditor> {
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          children: [
-            Text(
-              'Informasi servis',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: _isSubmitting ? null : _pickServiceDate,
-                style: OutlinedButton.styleFrom(
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            children: [
+              Text(
+                'Informasi servis',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _isSubmitting ? null : _pickServiceDate,
+                  style: OutlinedButton.styleFrom(
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Tanggal servis',
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(AppFormatters.date(_serviceDate)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today_outlined),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tanggal servis',
-                            style: Theme.of(context).textTheme.labelMedium,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(AppFormatters.date(_serviceDate)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _odometerController,
-              enabled: !_isSubmitting,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.next,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: 'Odometer',
-                hintText: 'Contoh: 12500',
-                suffixText: 'km',
-              ),
-              validator: (value) =>
-                  AppValidators.nonNegativeInteger(value, field: 'Odometer'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _workshopController,
-              enabled: !_isSubmitting,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Bengkel',
-                hintText: 'Nama bengkel atau servis mandiri',
-              ),
-              validator: (value) =>
-                  AppValidators.requiredText(value, field: 'Bengkel'),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Item perawatan',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: _isSubmitting ? null : _pickPreset,
-                  icon: const Icon(Icons.playlist_add_rounded),
-                  label: const Text('Pilih preset'),
-                ),
-                TextButton.icon(
-                  onPressed: _isSubmitting ? null : _addItem,
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Tambah manual'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            for (var index = 0; index < _items.length; index++) ...[
-              _ServiceItemFields(
-                key: _items[index].key,
-                index: index,
-                draft: _items[index],
-                enabled: !_isSubmitting,
-                canRemove: _items.length > 1,
-                onRemove: () => _removeItem(index),
-                onCostChanged: () => setState(() {}),
               ),
               const SizedBox(height: 12),
-            ],
-            Card(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 12,
-                  runSpacing: 4,
+              TextFormField(
+                controller: _odometerController,
+                enabled: !_isSubmitting,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Odometer',
+                  hintText: 'Contoh: 12500',
+                  suffixText: 'km',
+                ),
+                validator: (value) =>
+                    AppValidators.nonNegativeInteger(value, field: 'Odometer'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _workshopController,
+                enabled: !_isSubmitting,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Bengkel',
+                  hintText: 'Nama bengkel atau servis mandiri',
+                ),
+                validator: (value) =>
+                    AppValidators.requiredText(value, field: 'Bengkel'),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Item perawatan',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: _isSubmitting ? null : _pickPreset,
+                    icon: const Icon(Icons.playlist_add_rounded),
+                    label: const Text('Pilih preset'),
+                  ),
+                  TextButton.icon(
+                    onPressed: _isSubmitting ? null : _addItem,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Tambah manual'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              AnimatedSize(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: Column(
                   children: [
-                    Text(
-                      'Total biaya',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Text(
-                      AppFormatters.rupiah(_totalCost),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    for (var index = 0; index < _items.length; index++) ...[
+                      _ServiceItemFields(
+                        key: _items[index].key,
+                        index: index,
+                        draft: _items[index],
+                        enabled: !_isSubmitting,
+                        canRemove: _items.length > 1,
+                        onRemove: () => _removeItem(index),
+                        onCostChanged: () => setState(() {}),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                    ],
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _notesController,
-              enabled: !_isSubmitting,
-              minLines: 3,
-              maxLines: 5,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Catatan (opsional)',
-                hintText: 'Tambahkan keterangan servis',
-                alignLabelWithHint: true,
+              Card(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: [
+                      Text(
+                        'Total biaya',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        AppFormatters.rupiah(_totalCost),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: LoadingButton(
-                label: _isEditing ? 'Simpan perubahan' : 'Simpan servis',
-                isLoading: _isSubmitting,
-                onPressed: _submit,
-                icon: Icons.save_outlined,
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _notesController,
+                enabled: !_isSubmitting,
+                minLines: 3,
+                maxLines: 5,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Catatan (opsional)',
+                  hintText: 'Tambahkan keterangan servis',
+                  alignLabelWithHint: true,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: LoadingButton(
+                  label: _isEditing ? 'Simpan perubahan' : 'Simpan servis',
+                  isLoading: _isSubmitting,
+                  onPressed: _submit,
+                  icon: Icons.save_outlined,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mentorride/app/theme/app_theme.dart';
@@ -9,7 +10,10 @@ import 'package:mentorride/features/service_records/presentation/widgets/service
 import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
 import 'package:mentorride/features/service_schedules/presentation/widgets/service_schedule_card.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
+import 'package:mentorride/features/vehicles/presentation/controllers/vehicle_controller.dart';
+import 'package:mentorride/features/vehicles/presentation/screens/vehicle_detail_screen.dart';
 import 'package:mentorride/features/vehicles/presentation/widgets/vehicle_card.dart';
+import 'package:mentorride/features/vehicles/providers/vehicle_providers.dart';
 
 void main() {
   setUpAll(() => initializeDateFormatting('id_ID'));
@@ -111,6 +115,57 @@ void main() {
     expect(find.text('Tandai selesai'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('detail kendaraan aman pada teks besar', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const vehicle = Vehicle(
+      id: 'vehicle-detail-layout-test',
+      name: 'Sepeda motor keluarga untuk perjalanan jarak jauh',
+      brand: 'Merek kendaraan panjang',
+      model: 'Model edisi perjalanan sangat panjang',
+      year: 2026,
+      plateNumber: 'B 1234 XYZ',
+      currentOdometer: 987654321,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          vehicleDetailProvider(
+            'vehicle-detail-layout-test',
+          ).overrideWith((ref) => Stream.value(vehicle)),
+          activeVehicleProvider.overrideWith(
+            () => _FakeActiveVehicleController(vehicle),
+          ),
+          vehicleControllerProvider.overrideWith(_FakeVehicleController.new),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: const VehicleDetailScreen(
+            vehicleId: 'vehicle-detail-layout-test',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Informasi kendaraan'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('Informasi kendaraan'), findsOneWidget);
+    expect(find.text('Merek'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Future<void> _setCompactSurface(WidgetTester tester) async {
@@ -140,4 +195,18 @@ class _TestFrame extends StatelessWidget {
       ),
     );
   }
+}
+
+class _FakeActiveVehicleController extends ActiveVehicleController {
+  _FakeActiveVehicleController(this.vehicle);
+
+  final Vehicle vehicle;
+
+  @override
+  Future<Vehicle?> build() async => vehicle;
+}
+
+class _FakeVehicleController extends VehicleController {
+  @override
+  VehicleActionState build() => const VehicleActionState();
 }

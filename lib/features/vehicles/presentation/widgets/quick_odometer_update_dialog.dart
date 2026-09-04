@@ -51,6 +51,7 @@ class _QuickOdometerUpdateDialogState
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       title: const Text('Perbarui kilometer'),
       content: SizedBox(

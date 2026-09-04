@@ -34,6 +34,7 @@ class DashboardScreen extends ConsumerWidget {
         ],
       ),
       body: activeVehicle.when(
+        skipLoadingOnReload: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => ErrorState(
           message: 'Kendaraan aktif belum dapat dimuat.',
@@ -66,9 +67,6 @@ class _DashboardData extends ConsumerWidget {
     final recordsValue = ref.watch(serviceRecordsProvider);
     final schedulesValue = ref.watch(serviceSchedulesProvider);
 
-    if (recordsValue.isLoading || schedulesValue.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
     if (recordsValue.hasError) {
       return ErrorState(
         message: 'Ringkasan riwayat servis belum dapat dimuat.',
@@ -82,10 +80,16 @@ class _DashboardData extends ConsumerWidget {
       );
     }
 
+    final records = recordsValue.value;
+    final schedules = schedulesValue.value;
+    if (records == null || schedules == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     final summary = DashboardAggregator.aggregate(
       activeVehicle: vehicle,
-      serviceRecords: recordsValue.value ?? const [],
-      serviceSchedules: schedulesValue.value ?? const [],
+      serviceRecords: records,
+      serviceSchedules: schedules,
       now: now,
     );
     return DashboardOverview(
