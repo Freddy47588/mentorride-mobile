@@ -154,6 +154,50 @@ void main() {
       expect(result.isDueToday, isFalse);
     });
 
+    test('menghasilkan status visual konsisten dari kedua dimensi', () {
+      expect(
+        _calculate(
+          dueDate: DateTime(2026, 9, 30),
+          dueOdometer: 15000,
+          currentOdometer: 12000,
+          now: DateTime(2026, 8, 15),
+        ).visualState(),
+        ServiceScheduleVisualState.safe,
+      );
+      expect(
+        _calculate(
+          dueDate: DateTime(2026, 8, 22),
+          now: DateTime(2026, 8, 15),
+        ).visualState(),
+        ServiceScheduleVisualState.approaching,
+      );
+      expect(
+        _calculate(
+          dueDate: DateTime(2026, 8, 15),
+          now: DateTime(2026, 8, 15),
+        ).visualState(),
+        ServiceScheduleVisualState.due,
+      );
+      expect(
+        _calculate(
+          dueDate: DateTime(2026, 9, 30),
+          dueOdometer: 12500,
+          currentOdometer: 12500,
+          now: DateTime(2026, 8, 15),
+        ).visualState(),
+        ServiceScheduleVisualState.overdue,
+      );
+    });
+
+    test('label visual memakai istilah status jadwal yang sama', () {
+      final result = _calculate(
+        dueDate: DateTime(2026, 8, 20),
+        now: DateTime(2026, 8, 15),
+      );
+
+      expect(result.visualLabel(), 'Mendekati');
+    });
+
     test('model terserialisasi lama tetap dapat dihitung tanpa migrasi', () {
       final schedule = ServiceSchedule.fromMap({
         'id': 'schedule-1',

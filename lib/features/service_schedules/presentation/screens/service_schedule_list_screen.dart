@@ -19,6 +19,7 @@ class ServiceScheduleListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Jadwal servis')),
       body: activeVehicle.when(
+        skipLoadingOnReload: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => ErrorState(
           message: 'Kendaraan aktif belum dapat dimuat.',
@@ -111,51 +112,65 @@ class _ScheduleList extends ConsumerWidget {
     final isSubmitting = ref.watch(
       serviceScheduleControllerProvider.select((state) => state.isSubmitting),
     );
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
 
-    return schedules.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => ErrorState(
-        message: 'Jadwal servis belum dapat dimuat.',
-        onRetry: () => ref.invalidate(serviceSchedulesProvider),
-      ),
-      data: (items) {
-        if (items.isEmpty) {
-          return EmptyState(
-            icon: Icons.event_note_rounded,
-            title: 'Belum ada jadwal',
-            message:
-                'Tambahkan jadwal agar perawatan kendaraan tidak terlewat.',
-            actionLabel: 'Tambah jadwal',
-            onAction: () => ServiceScheduleNavigation.openNew<void>(context),
-          );
-        }
+    return AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: schedules.when(
+        loading: () => const Center(
+          key: ValueKey('schedule-loading'),
+          child: CircularProgressIndicator(),
+        ),
+        error: (error, stackTrace) => ErrorState(
+          key: const ValueKey('schedule-error'),
+          message: 'Jadwal servis belum dapat dimuat.',
+          onRetry: () => ref.invalidate(serviceSchedulesProvider),
+        ),
+        data: (items) {
+          if (items.isEmpty) {
+            return EmptyState(
+              key: const ValueKey('schedule-empty'),
+              icon: Icons.event_note_rounded,
+              title: 'Belum ada jadwal',
+              message:
+                  'Tambahkan jadwal agar perawatan kendaraan tidak terlewat.',
+              actionLabel: 'Tambah jadwal',
+              onAction: () => ServiceScheduleNavigation.openNew<void>(context),
+            );
+          }
 
-        return RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(serviceSchedulesProvider);
-            await ref.read(serviceSchedulesProvider.future);
-          },
-          child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
-            itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final schedule = items[index];
-              return ServiceScheduleCard(
-                schedule: schedule,
-                currentOdometer: currentOdometer,
-                actionsEnabled: !isSubmitting,
-                onTap: () => ServiceScheduleNavigation.openDetail<void>(
-                  context,
-                  schedule.id,
-                ),
-                onComplete: () => _complete(context, ref, schedule),
-              );
+          return RefreshIndicator(
+            key: const ValueKey('schedule-list'),
+            onRefresh: () async {
+              ref.invalidate(serviceSchedulesProvider);
+              await ref.read(serviceSchedulesProvider.future);
             },
-          ),
-        );
-      },
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+              itemCount: items.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final schedule = items[index];
+                return ServiceScheduleCard(
+                  schedule: schedule,
+                  currentOdometer: currentOdometer,
+                  actionsEnabled: !isSubmitting,
+                  onTap: () => ServiceScheduleNavigation.openDetail<void>(
+                    context,
+                    schedule.id,
+                  ),
+                  onComplete: () => _complete(context, ref, schedule),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mentorride/core/utils/formatters.dart';
 import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
 import 'package:mentorride/features/service_schedules/domain/services/service_schedule_due_calculator.dart';
+import 'package:mentorride/features/service_schedules/presentation/widgets/service_schedule_status_badge.dart';
 
 class ServiceScheduleCard extends StatelessWidget {
   const ServiceScheduleCard({
@@ -29,140 +30,104 @@ class ServiceScheduleCard extends StatelessWidget {
       now: now ?? DateTime.now(),
       currentOdometer: currentOdometer,
     );
-    final overdue = !schedule.isCompleted && dueStatus.isOverdue;
-    final statusColor = overdue
-        ? theme.colorScheme.error
-        : theme.colorScheme.onSurfaceVariant;
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
 
     return Card(
-      color: schedule.isCompleted
-          ? theme.colorScheme.surfaceContainerLow
-          : theme.colorScheme.surface,
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: actionsEnabled ? onTap : null,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          schedule.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: schedule.isCompleted
-                                ? theme.colorScheme.onSurfaceVariant
-                                : null,
+      child: AnimatedContainer(
+        duration: duration,
+        curve: Curves.easeOutCubic,
+        color: schedule.isCompleted
+            ? theme.colorScheme.surfaceContainerLow
+            : theme.colorScheme.surface,
+        child: InkWell(
+          onTap: actionsEnabled ? onTap : null,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            schedule.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: schedule.isCompleted
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : null,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          schedule.serviceType,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          const SizedBox(height: 3),
+                          Text(
+                            schedule.serviceType,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  _StatusLabel(
-                    label: schedule.isCompleted
-                        ? 'Selesai'
-                        : overdue
-                        ? 'Terlambat'
-                        : 'Aktif',
-                    color: statusColor,
-                    icon: schedule.isCompleted
-                        ? Icons.check_circle_outline_rounded
-                        : overdue
-                        ? Icons.error_outline_rounded
-                        : Icons.schedule_rounded,
-                  ),
-                ],
-              ),
-              const Divider(height: 24),
-              _ScheduleLine(
-                label:
-                    '${AppFormatters.date(schedule.dueDate)} • '
-                    '${schedule.isCompleted ? 'Jadwal selesai' : dueStatus.date.label}',
-                icon: Icons.event_outlined,
-                isOverdue: !schedule.isCompleted && dueStatus.date.isOverdue,
-              ),
-              if (schedule.dueOdometer case final dueOdometer?) ...[
-                const SizedBox(height: 7),
+                    const SizedBox(width: 12),
+                    ServiceScheduleStatusBadge(
+                      schedule: schedule,
+                      dueStatus: dueStatus,
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
                 _ScheduleLine(
                   label:
-                      '${AppFormatters.kilometer(dueOdometer)} • '
-                      '${schedule.isCompleted ? 'Jadwal selesai' : dueStatus.odometer!.label}',
-                  icon: Icons.speed_rounded,
-                  isOverdue:
-                      !schedule.isCompleted && dueStatus.odometer!.isOverdue,
+                      '${AppFormatters.date(schedule.dueDate)} • '
+                      '${schedule.isCompleted ? 'Jadwal selesai' : dueStatus.date.label}',
+                  icon: Icons.event_outlined,
+                  isOverdue: !schedule.isCompleted && dueStatus.date.isOverdue,
                 ),
-              ],
-              if (schedule.reminderEnabled && !schedule.isCompleted) ...[
-                const SizedBox(height: 7),
-                const _ScheduleLine(
-                  label: 'Pengingat aktif',
-                  icon: Icons.notifications_active_outlined,
-                ),
-              ],
-              if (!schedule.isCompleted) ...[
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: actionsEnabled ? onComplete : null,
-                    child: const Text('Tandai selesai'),
+                if (schedule.dueOdometer case final dueOdometer?) ...[
+                  const SizedBox(height: 7),
+                  _ScheduleLine(
+                    label:
+                        '${AppFormatters.kilometer(dueOdometer)} • '
+                        '${schedule.isCompleted ? 'Jadwal selesai' : dueStatus.odometer!.label}',
+                    icon: Icons.speed_rounded,
+                    isOverdue:
+                        !schedule.isCompleted && dueStatus.odometer!.isOverdue,
                   ),
-                ),
-              ] else
-                const SizedBox(height: 4),
-            ],
+                ],
+                if (schedule.reminderEnabled && !schedule.isCompleted) ...[
+                  const SizedBox(height: 7),
+                  const _ScheduleLine(
+                    label: 'Pengingat aktif',
+                    icon: Icons.notifications_active_outlined,
+                  ),
+                ],
+                if (!schedule.isCompleted) ...[
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: actionsEnabled ? onComplete : null,
+                      child: const Text('Tandai selesai'),
+                    ),
+                  ),
+                ] else
+                  const SizedBox(height: 4),
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _StatusLabel extends StatelessWidget {
-  const _StatusLabel({
-    required this.label,
-    required this.color,
-    required this.icon,
-  });
-
-  final String label;
-  final Color color;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 17, color: color),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 }

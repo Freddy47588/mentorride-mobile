@@ -4,6 +4,8 @@ enum ServiceDueDateState { overdue, today, upcoming }
 
 enum ServiceDueOdometerState { overdue, upcoming }
 
+enum ServiceScheduleVisualState { safe, approaching, due, overdue }
+
 class ServiceDueDateStatus {
   const ServiceDueDateStatus._({
     required this.state,
@@ -85,6 +87,41 @@ class ServiceScheduleDueStatus {
   bool get isOverdue => date.isOverdue || (odometer?.isOverdue ?? false);
 
   bool get isDueToday => date.isDueToday;
+
+  ServiceScheduleVisualState visualState({
+    int approachingDayThreshold = 7,
+    int approachingKilometerThreshold = 500,
+  }) {
+    if (isOverdue) return ServiceScheduleVisualState.overdue;
+    if (isDueToday) return ServiceScheduleVisualState.due;
+
+    final isDateApproaching =
+        date.daysRemaining != null &&
+        date.daysRemaining! <= approachingDayThreshold;
+    final kilometersRemaining = odometer?.kilometersRemaining;
+    final isOdometerApproaching =
+        kilometersRemaining != null &&
+        kilometersRemaining <= approachingKilometerThreshold;
+    if (isDateApproaching || isOdometerApproaching) {
+      return ServiceScheduleVisualState.approaching;
+    }
+    return ServiceScheduleVisualState.safe;
+  }
+
+  String visualLabel({
+    int approachingDayThreshold = 7,
+    int approachingKilometerThreshold = 500,
+  }) {
+    return switch (visualState(
+      approachingDayThreshold: approachingDayThreshold,
+      approachingKilometerThreshold: approachingKilometerThreshold,
+    )) {
+      ServiceScheduleVisualState.safe => 'Aman',
+      ServiceScheduleVisualState.approaching => 'Mendekati',
+      ServiceScheduleVisualState.due => 'Jatuh tempo',
+      ServiceScheduleVisualState.overdue => 'Terlambat',
+    };
+  }
 
   List<String> get labels {
     return List.unmodifiable([

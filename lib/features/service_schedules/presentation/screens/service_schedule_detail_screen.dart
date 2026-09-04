@@ -6,6 +6,7 @@ import 'package:mentorride/features/service_schedules/domain/models/service_sche
 import 'package:mentorride/features/service_schedules/domain/services/service_schedule_due_calculator.dart';
 import 'package:mentorride/features/service_schedules/presentation/navigation/service_schedule_completion_flow.dart';
 import 'package:mentorride/features/service_schedules/presentation/navigation/service_schedule_navigation.dart';
+import 'package:mentorride/features/service_schedules/presentation/widgets/service_schedule_status_badge.dart';
 import 'package:mentorride/features/service_schedules/providers/service_schedule_providers.dart';
 import 'package:mentorride/features/vehicles/providers/vehicle_providers.dart';
 import 'package:mentorride/shared/widgets/error_state.dart';
@@ -187,8 +188,6 @@ class _DetailBody extends StatelessWidget {
       now: DateTime.now(),
       currentOdometer: currentOdometer,
     );
-    final overdue = !schedule.isCompleted && dueStatus.isOverdue;
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
@@ -216,20 +215,14 @@ class _DetailBody extends StatelessWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    ServiceScheduleStatusBadge(
+                      schedule: schedule,
+                      dueStatus: dueStatus,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                _InfoRow(
-                  icon: Icons.flag_outlined,
-                  label: 'Status',
-                  value: schedule.isCompleted
-                      ? 'Selesai'
-                      : overdue
-                      ? 'Terlambat'
-                      : 'Aktif',
-                  valueColor: overdue ? theme.colorScheme.error : null,
-                ),
-                const SizedBox(height: 14),
                 _InfoRow(
                   icon: Icons.event_outlined,
                   label: 'Tanggal jatuh tempo',
