@@ -27,10 +27,11 @@ input pengguna dan disimpan per akun di Cloud Firestore.
 - Laporan kendaraan aktif dapat diekspor sebagai PDF A4 atau CSV UTF-8 lalu
   dibagikan melalui Android share sheet tanpa izin penyimpanan lama.
 - Preset perawatan lokal untuk membantu mengisi komponen dan jenis servis tanpa
-  mengambil dataset eksternal.
+  mengambil dataset eksternal. Interval pada preset adalah interval perawatan
+  default sebagai referensi, bukan interval wajib untuk semua kendaraan.
 - Kondisi Perawatan dan estimasi servis berikutnya dihitung secara deterministik
   dari preset lokal, riwayat, jadwal, tanggal, dan odometer. Persentase yang
-  ditampilkan menilai catatan perawatan, bukan kesehatan mesin.
+  ditampilkan menilai kelengkapan dan ketepatan catatan perawatan.
 - Jadwal servis dengan tanggal jatuh tempo dan kilometer jatuh tempo opsional,
   kalkulator status bersama untuk kedua dimensi, pengingat lokal, status
   selesai, dan ID notifikasi yang stabil.
@@ -243,6 +244,10 @@ Setelah signing tersedia, APK release dihasilkan di
 Naikkan `version` pada `pubspec.yaml` sesuai rilis sebelum mengunggah artefak.
 Simpan keystore dan password pada password manager atau secret storage tim;
 kehilangan upload key dapat menghambat pembaruan aplikasi berikutnya.
+
+Untuk rilis `1.0.0`, gunakan [checklist rilis](RELEASE_CHECKLIST.md) dan
+[catatan rilis](RELEASE_NOTES.md) yang sudah disiapkan. Publishing tag, GitHub
+Release, APK, dan deploy Firebase tetap merupakan langkah manual developer.
 
 ## Catatan pengembangan
 
