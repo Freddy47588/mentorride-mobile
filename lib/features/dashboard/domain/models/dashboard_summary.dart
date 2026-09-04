@@ -1,5 +1,6 @@
 import 'package:mentorride/features/service_records/domain/models/service_record.dart';
 import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
+import 'package:mentorride/features/service_schedules/domain/services/service_schedule_due_calculator.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 
 class MonthlyExpense {
@@ -39,7 +40,11 @@ abstract final class DashboardAggregator {
     final schedules = serviceSchedules.toList(growable: false);
 
     final latestService = _latestService(records);
-    final nearestSchedule = _nearestPendingSchedule(schedules);
+    final nearestSchedule = _nearestPendingSchedule(
+      schedules,
+      currentOdometer: activeVehicle?.currentOdometer ?? 0,
+      now: now,
+    );
     final monthlyExpenses = List<MonthlyExpense>.unmodifiable(
       List.generate(6, (index) {
         final month = DateTime(localNow.year, localNow.month - 5 + index);
@@ -75,14 +80,30 @@ abstract final class DashboardAggregator {
   }
 
   static ServiceSchedule? _nearestPendingSchedule(
-    List<ServiceSchedule> schedules,
-  ) {
+    List<ServiceSchedule> schedules, {
+    required int currentOdometer,
+    required DateTime now,
+  }) {
     final pending = schedules
         .where((schedule) => schedule.status == ServiceScheduleStatus.pending)
         .toList();
     if (pending.isEmpty) return null;
 
-    pending.sort((left, right) => left.dueDate.compareTo(right.dueDate));
+    pending.sort((left, right) {
+      final leftUrgency = ServiceScheduleDueCalculator.calculate(
+        schedule: left,
+        now: now,
+        currentOdometer: currentOdometer,
+      ).visualState().index;
+      final rightUrgency = ServiceScheduleDueCalculator.calculate(
+        schedule: right,
+        now: now,
+        currentOdometer: currentOdometer,
+      ).visualState().index;
+      final byUrgency = rightUrgency.compareTo(leftUrgency);
+      if (byUrgency != 0) return byUrgency;
+      return left.dueDate.compareTo(right.dueDate);
+    });
     return pending.first;
   }
 

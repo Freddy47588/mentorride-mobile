@@ -72,6 +72,39 @@ void main() {
       ]);
     });
 
+    test('memprioritaskan jadwal terlambat berdasarkan kilometer', () {
+      const vehicle = Vehicle(
+        id: 'vehicle-1',
+        name: 'Motor',
+        brand: 'Honda',
+        model: 'Vario',
+        year: 2024,
+        plateNumber: 'B 1 MR',
+        currentOdometer: 15000,
+      );
+      final byDate = _schedule(
+        'by-date',
+        DateTime(2026, 8, 20),
+        ServiceScheduleStatus.pending,
+        dueOdometer: 20000,
+      );
+      final overdueByOdometer = _schedule(
+        'by-odometer',
+        DateTime(2026, 12, 20),
+        ServiceScheduleStatus.pending,
+        dueOdometer: 14000,
+      );
+
+      final summary = DashboardAggregator.aggregate(
+        activeVehicle: vehicle,
+        serviceRecords: const [],
+        serviceSchedules: [byDate, overdueByOdometer],
+        now: DateTime(2026, 8, 15),
+      );
+
+      expect(summary.nearestPendingSchedule, same(overdueByOdometer));
+    });
+
     test('menghasilkan nilai kosong yang konsisten tanpa data', () {
       final summary = DashboardAggregator.aggregate(
         activeVehicle: null,
@@ -110,14 +143,15 @@ ServiceRecord _record(String id, DateTime date, int cost) {
 ServiceSchedule _schedule(
   String id,
   DateTime dueDate,
-  ServiceScheduleStatus status,
-) {
+  ServiceScheduleStatus status, {
+  int? dueOdometer,
+}) {
   return ServiceSchedule(
     id: id,
     title: 'Jadwal $id',
     serviceType: 'Servis berkala',
     dueDate: dueDate,
-    dueOdometer: null,
+    dueOdometer: dueOdometer,
     reminderAt: dueDate.subtract(const Duration(days: 1)),
     reminderEnabled: false,
     localNotificationId: 1,
