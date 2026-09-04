@@ -188,37 +188,46 @@ class _MonthGrid extends StatelessWidget {
         if (dayNumber < 1 || dayNumber > days) return const SizedBox.shrink();
         final day = DateTime(month.year, month.month, dayNumber);
         final selected = day == selectedDay;
-        final hasSchedules = grouped[day]?.isNotEmpty ?? false;
-        return InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => onSelected(day),
-          child: AnimatedContainer(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 160),
-            margin: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: selected
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : null,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('$dayNumber'),
-                const SizedBox(height: 4),
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: hasSchedules
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.transparent,
-                    shape: BoxShape.circle,
+        final scheduleCount = grouped[day]?.length ?? 0;
+        final hasSchedules = scheduleCount > 0;
+        return Semantics(
+          button: true,
+          selected: selected,
+          label: hasSchedules
+              ? 'Tanggal $dayNumber, $scheduleCount jadwal'
+              : 'Tanggal $dayNumber, tidak ada jadwal',
+          excludeSemantics: true,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => onSelected(day),
+            child: AnimatedContainer(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 160),
+              margin: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: selected
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : null,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('$dayNumber'),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: hasSchedules
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

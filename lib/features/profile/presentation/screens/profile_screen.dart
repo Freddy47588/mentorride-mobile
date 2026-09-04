@@ -324,7 +324,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _showSnackBar(
       result == null
           ? error ?? 'Cadangan belum dapat dipulihkan.'
-          : '${result.vehicleCount} kendaraan berhasil ditambahkan.',
+          : result.warningMessage ??
+                '${result.vehicleCount} kendaraan berhasil ditambahkan.',
     );
   }
 
@@ -644,8 +645,8 @@ class _ThemeCard extends StatelessWidget {
           title: Text('Tema'),
           subtitle: Text('Pilih tampilan sistem, terang, atau gelap.'),
         ),
-        SizedBox(
-          width: double.infinity,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
           child: SegmentedButton<ThemeMode>(
             segments: const [
               ButtonSegment(
