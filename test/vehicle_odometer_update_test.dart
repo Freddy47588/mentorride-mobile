@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mentorride/features/auth/domain/models/auth_session.dart';
 import 'package:mentorride/features/auth/providers/auth_providers.dart';
+import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 import 'package:mentorride/features/vehicles/domain/repositories/vehicle_repository.dart';
 import 'package:mentorride/features/vehicles/presentation/widgets/quick_odometer_update_dialog.dart';
@@ -141,7 +142,22 @@ class _DelayedVehicleRepository implements VehicleRepository {
   }
 
   @override
+  Future<List<ServiceSchedule>> schedulesForVehicle(
+    String uid,
+    String vehicleId,
+  ) async => const [];
+
+  @override
   Future<void> updateVehicle(String uid, Vehicle vehicle) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> setArchived({
+    required String uid,
+    required String vehicleId,
+    required bool isArchived,
+  }) {
     throw UnimplementedError();
   }
 

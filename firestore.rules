@@ -37,6 +37,20 @@ service cloud.firestore {
       match /vehicles/{vehicleId}/service_schedules/{scheduleId} {
         allow read, write: if isOwner(uid);
       }
+
+      match /vehicles/{vehicleId}/odometer_logs/{logId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && request.resource.data.odometer is int
+          && request.resource.data.odometer >= 0
+          && request.resource.data.recordedAt is timestamp
+          && request.resource.data.source in [
+            'manual_update',
+            'service_record'
+          ];
+        allow delete: if isOwner(uid);
+        allow update: if false;
+      }
     }
 
     match /{document=**} {

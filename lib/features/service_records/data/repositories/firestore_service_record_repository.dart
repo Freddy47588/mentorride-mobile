@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mentorride/core/errors/app_exception.dart';
 import 'package:mentorride/features/service_records/domain/models/service_record.dart';
 import 'package:mentorride/features/service_records/domain/repositories/service_record_repository.dart';
+import 'package:mentorride/features/odometer/domain/models/odometer_log.dart';
 
 class FirestoreServiceRecordRepository implements ServiceRecordRepository {
   FirestoreServiceRecordRepository(this._firestore);
@@ -51,6 +52,8 @@ class FirestoreServiceRecordRepository implements ServiceRecordRepository {
           vehicleReference: vehicleReference,
           vehicleData: vehicleSnapshot.data(),
           serviceOdometer: record.odometer,
+          uid: uid,
+          vehicleId: vehicleId,
         );
       });
       return record.copyWith(id: recordReference.id);
@@ -86,6 +89,8 @@ class FirestoreServiceRecordRepository implements ServiceRecordRepository {
           vehicleReference: vehicleReference,
           vehicleData: vehicleSnapshot.data(),
           serviceOdometer: record.odometer,
+          uid: uid,
+          vehicleId: vehicleId,
         );
       });
     } on Object catch (error) {
@@ -155,6 +160,8 @@ class FirestoreServiceRecordRepository implements ServiceRecordRepository {
     required DocumentReference<Map<String, dynamic>> vehicleReference,
     required Map<String, dynamic>? vehicleData,
     required int serviceOdometer,
+    required String uid,
+    required String vehicleId,
   }) {
     final rawCurrentOdometer = vehicleData?['currentOdometer'];
     final currentOdometer = rawCurrentOdometer is num
@@ -166,6 +173,12 @@ class FirestoreServiceRecordRepository implements ServiceRecordRepository {
       'currentOdometer': serviceOdometer,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    transaction
+        .set(_vehicle(uid, vehicleId).collection('odometer_logs').doc(), {
+          'odometer': serviceOdometer,
+          'recordedAt': FieldValue.serverTimestamp(),
+          'source': OdometerLogSource.serviceRecord.storageValue,
+        });
   }
 
   DateTime? _dateTimeFromValue(Object? value) {

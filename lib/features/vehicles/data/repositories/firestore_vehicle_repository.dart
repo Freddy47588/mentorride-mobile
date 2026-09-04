@@ -2,7 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mentorride/core/errors/app_exception.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 import 'package:mentorride/features/vehicles/domain/repositories/vehicle_repository.dart';
+import 'package:mentorride/features/odometer/domain/models/odometer_log.dart';
 import 'package:uuid/uuid.dart';
+import 'package:mentorride/features/vehicles/domain/services/odometer_update_policy.dart';
+import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
 
 class FirestoreVehicleRepository implements VehicleRepository {
   FirestoreVehicleRepository({
@@ -49,11 +52,20 @@ class FirestoreVehicleRepository implements VehicleRepository {
     final id = _uuid.v4();
     final createdVehicle = vehicle.copyWith(id: id);
 
-    await _vehicle(uid, id).set({
+    final batch = _firestore.batch();
+    batch.set(_vehicle(uid, id), {
       ..._writableFields(createdVehicle),
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    if (createdVehicle.currentOdometer > 0) {
+      batch.set(_odometerLogs(uid, id).doc(), {
+        'odometer': createdVehicle.currentOdometer,
+        'recordedAt': FieldValue.serverTimestamp(),
+        'source': OdometerLogSource.manualUpdate.storageValue,
+      });
+    }
+    await batch.commit();
 
     return createdVehicle;
   }
@@ -75,16 +87,37 @@ class FirestoreVehicleRepository implements VehicleRepository {
       final current = rawCurrent is num
           ? rawCurrent.toInt()
           : int.tryParse(rawCurrent?.toString() ?? '') ?? 0;
-      if (vehicle.currentOdometer < current) {
-        throw const AppException(
-          'Kilometer baru tidak boleh lebih kecil dari kilometer saat ini.',
-        );
-      }
+      final change = OdometerUpdatePolicy.evaluate(
+        current: current,
+        proposed: vehicle.currentOdometer,
+      );
 
       transaction.update(reference, {
         ..._writableFields(vehicle),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+      if (change == OdometerChange.increased) {
+        _createOdometerLog(
+          transaction: transaction,
+          uid: uid,
+          vehicleId: vehicle.id,
+          odometer: vehicle.currentOdometer,
+          source: OdometerLogSource.manualUpdate,
+        );
+      }
+    });
+  }
+
+  @override
+  Future<void> setArchived({
+    required String uid,
+    required String vehicleId,
+    required bool isArchived,
+  }) async {
+    if (vehicleId.isEmpty) throw const AppException('Kendaraan tidak valid.');
+    await _vehicle(uid, vehicleId).update({
+      'isArchived': isArchived,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -112,12 +145,11 @@ class FirestoreVehicleRepository implements VehicleRepository {
       final current = rawCurrent is num
           ? rawCurrent.toInt()
           : int.tryParse(rawCurrent?.toString() ?? '') ?? 0;
-      if (odometer < current) {
-        throw const AppException(
-          'Kilometer baru tidak boleh lebih kecil dari kilometer saat ini.',
-        );
-      }
-      if (odometer == current) {
+      final change = OdometerUpdatePolicy.evaluate(
+        current: current,
+        proposed: odometer,
+      );
+      if (change == OdometerChange.unchanged) {
         return VehicleOdometerUpdateResult.unchanged;
       }
 
@@ -125,6 +157,13 @@ class FirestoreVehicleRepository implements VehicleRepository {
         'currentOdometer': odometer,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+      _createOdometerLog(
+        transaction: transaction,
+        uid: uid,
+        vehicleId: vehicleId,
+        odometer: odometer,
+        source: OdometerLogSource.manualUpdate,
+      );
       return VehicleOdometerUpdateResult.updated;
     });
   }
@@ -159,11 +198,45 @@ class FirestoreVehicleRepository implements VehicleRepository {
   }
 
   @override
+  Future<List<ServiceSchedule>> schedulesForVehicle(
+    String uid,
+    String vehicleId,
+  ) async {
+    final documents = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+    final schedules = _vehicle(uid, vehicleId).collection('service_schedules');
+    DocumentSnapshot<Map<String, dynamic>>? cursor;
+    while (true) {
+      Query<Map<String, dynamic>> query = schedules
+          .orderBy(FieldPath.documentId)
+          .limit(_batchSize);
+      if (cursor != null) query = query.startAfterDocument(cursor);
+      final snapshot = await query.get();
+      documents.addAll(snapshot.docs);
+      if (snapshot.docs.length < _batchSize) break;
+      cursor = snapshot.docs.last;
+    }
+    return documents
+        .map((document) {
+          final data = document.data();
+          return ServiceSchedule.fromMap({
+            ...data,
+            'id': document.id,
+            'dueDate': _dateTimeFromTimestamp(data['dueDate']),
+            'reminderAt': _dateTimeFromTimestamp(data['reminderAt']),
+            'createdAt': _dateTimeFromTimestamp(data['createdAt']),
+            'updatedAt': _dateTimeFromTimestamp(data['updatedAt']),
+          });
+        })
+        .toList(growable: false);
+  }
+
+  @override
   Future<void> deleteCascade(String uid, String vehicleId) async {
     final vehicle = _vehicle(uid, vehicleId);
 
     await _deleteCollectionInChunks(vehicle.collection('service_records'));
     await _deleteCollectionInChunks(vehicle.collection('service_schedules'));
+    await _deleteCollectionInChunks(vehicle.collection('odometer_logs'));
     await vehicle.delete();
   }
 
@@ -202,7 +275,29 @@ class FirestoreVehicleRepository implements VehicleRepository {
       'year': vehicle.year,
       'plateNumber': vehicle.plateNumber.trim().toUpperCase(),
       'currentOdometer': vehicle.currentOdometer,
+      'isArchived': vehicle.isArchived,
     };
+  }
+
+  CollectionReference<Map<String, dynamic>> _odometerLogs(
+    String uid,
+    String vehicleId,
+  ) {
+    return _vehicle(uid, vehicleId).collection('odometer_logs');
+  }
+
+  void _createOdometerLog({
+    required Transaction transaction,
+    required String uid,
+    required String vehicleId,
+    required int odometer,
+    required OdometerLogSource source,
+  }) {
+    transaction.set(_odometerLogs(uid, vehicleId).doc(), {
+      'odometer': odometer,
+      'recordedAt': FieldValue.serverTimestamp(),
+      'source': source.storageValue,
+    });
   }
 
   DateTime? _dateTimeFromTimestamp(Object? value) {

@@ -33,6 +33,7 @@ void main() {
         'year': 2022,
         'plateNumber': 'B 1234 XYZ',
         'currentOdometer': 12500,
+        'isArchived': false,
         'createdAt': null,
         'updatedAt': null,
       });

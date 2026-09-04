@@ -1,6 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mentorride/core/errors/app_exception.dart';
+import 'package:mentorride/core/storage/active_vehicle_store.dart';
+import 'package:mentorride/core/notifications/notification_providers.dart';
+import 'package:mentorride/core/notifications/reminder_scheduler.dart';
 import 'package:mentorride/features/auth/providers/auth_providers.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 import 'package:mentorride/features/vehicles/domain/repositories/vehicle_repository.dart';
@@ -96,6 +99,85 @@ class VehicleController extends Notifier<VehicleActionState> {
       );
       await ref.read(vehicleReminderCancellerProvider).cancelAll(reminderIds);
       await _repository.deleteCascade(uid, vehicleId);
+      state = const VehicleActionState();
+      return true;
+    } on Object catch (error) {
+      state = VehicleActionState(errorMessage: _messageFor(error));
+      return false;
+    }
+  }
+
+  Future<bool> archiveVehicle(String vehicleId) async {
+    if (state.isSubmitting) return false;
+    final uid = _currentUid();
+    if (uid == null) return false;
+    state = const VehicleActionState(isSubmitting: true);
+    try {
+      final reminderIds = await _repository.reminderIdsForVehicle(
+        uid,
+        vehicleId,
+      );
+      await ref.read(vehicleReminderCancellerProvider).cancelAll(reminderIds);
+      await _repository.setArchived(
+        uid: uid,
+        vehicleId: vehicleId,
+        isArchived: true,
+      );
+      final store = ref.read(activeVehicleStoreProvider);
+      if (await store.read(uid) == vehicleId) {
+        await store.clear(uid);
+      }
+      state = const VehicleActionState();
+      return true;
+    } on Object catch (error) {
+      state = VehicleActionState(errorMessage: _messageFor(error));
+      return false;
+    }
+  }
+
+  Future<bool> restoreVehicle(String vehicleId) async {
+    if (state.isSubmitting) return false;
+    final uid = _currentUid();
+    if (uid == null) return false;
+    state = const VehicleActionState(isSubmitting: true);
+    try {
+      final schedules = await _repository.schedulesForVehicle(uid, vehicleId);
+      final reminders = schedules
+          .where(
+            (schedule) =>
+                schedule.reminderEnabled &&
+                !schedule.isCompleted &&
+                schedule.reminderAt.isAfter(DateTime.now()),
+          )
+          .toList(growable: false);
+      if (reminders.isNotEmpty) {
+        final scheduler = ref.read(reminderSchedulerProvider);
+        var permission = await scheduler.permissionStatus();
+        if (permission != NotificationPermissionStatus.granted) {
+          permission = await scheduler.requestPermission();
+        }
+        if (permission != NotificationPermissionStatus.granted) {
+          throw const AppException(
+            'Izin notifikasi diperlukan untuk memulihkan pengingat kendaraan.',
+          );
+        }
+      }
+      await _repository.setArchived(
+        uid: uid,
+        vehicleId: vehicleId,
+        isArchived: false,
+      );
+      final scheduler = ref.read(reminderSchedulerProvider);
+      for (final schedule in reminders) {
+        await scheduler.schedule(
+          id: schedule.localNotificationId,
+          title: 'Pengingat servis: ${schedule.title}',
+          body:
+              '${schedule.serviceType} untuk kendaraan Anda segera dijadwalkan.',
+          scheduledAt: schedule.reminderAt,
+          payload: '/schedules/${schedule.id}',
+        );
+      }
       state = const VehicleActionState();
       return true;
     } on Object catch (error) {

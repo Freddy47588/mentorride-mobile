@@ -9,6 +9,7 @@ class VehicleCard extends StatelessWidget {
     required this.onTap,
     required this.onSelect,
     this.isSelecting = false,
+    this.showSelectAction = true,
     super.key,
   });
 
@@ -17,6 +18,7 @@ class VehicleCard extends StatelessWidget {
   final bool isSelecting;
   final VoidCallback onTap;
   final VoidCallback? onSelect;
+  final bool showSelectAction;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +110,7 @@ class VehicleCard extends StatelessWidget {
                         AnimatedSize(
                           duration: duration,
                           curve: Curves.easeOutCubic,
-                          child: isActive
+                          child: isActive || !showSelectAction
                               ? const SizedBox.shrink()
                               : Padding(
                                   padding: const EdgeInsets.only(top: 4),

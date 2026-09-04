@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:mentorride/app/router/app_routes.dart';
 import 'package:mentorride/core/utils/formatters.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 import 'package:mentorride/features/vehicles/presentation/screens/vehicle_form_screen.dart';
@@ -59,13 +61,23 @@ class VehicleDetailScreen extends ConsumerWidget {
             actions: [
               IconButton(
                 tooltip: 'Edit kendaraan',
-                onPressed: actionState.isSubmitting
+                onPressed: actionState.isSubmitting || vehicle.isArchived
                     ? null
                     : () => _openEdit(context, vehicle),
                 icon: const Icon(Icons.edit_outlined),
               ),
+              if (!vehicle.isArchived)
+                IconButton(
+                  tooltip: 'Arsipkan kendaraan',
+                  onPressed: actionState.isSubmitting
+                      ? null
+                      : () => _confirmArchive(context, ref, vehicle),
+                  icon: const Icon(Icons.archive_outlined),
+                ),
               IconButton(
-                tooltip: 'Hapus kendaraan',
+                tooltip: vehicle.isArchived
+                    ? 'Hapus permanen'
+                    : 'Hapus kendaraan',
                 onPressed: actionState.isSubmitting
                     ? null
                     : () => _confirmDelete(context, ref, vehicle),
@@ -118,11 +130,28 @@ class VehicleDetailScreen extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: 24),
+              if (isActive) ...[
+                OutlinedButton.icon(
+                  onPressed: () => context.push(AppRoutes.odometerHistory),
+                  icon: const Icon(Icons.show_chart_rounded),
+                  label: const Text('Riwayat Kilometer'),
+                ),
+                const SizedBox(height: 12),
+              ],
               AnimatedSwitcher(
                 duration: MediaQuery.disableAnimationsOf(context)
                     ? Duration.zero
                     : const Duration(milliseconds: 220),
-                child: !isActive
+                child: vehicle.isArchived
+                    ? FilledButton.icon(
+                        key: const ValueKey('restore-vehicle'),
+                        onPressed: actionState.isSubmitting
+                            ? null
+                            : () => _restore(context, ref, vehicle),
+                        icon: const Icon(Icons.unarchive_outlined),
+                        label: const Text('Pulihkan kendaraan'),
+                      )
+                    : !isActive
                     ? FilledButton.icon(
                         key: const ValueKey('select-vehicle'),
                         onPressed: activeVehicle.isLoading
@@ -201,7 +230,11 @@ class VehicleDetailScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Hapus kendaraan?'),
+        title: Text(
+          vehicle.isArchived
+              ? 'Hapus kendaraan secara permanen?'
+              : 'Hapus kendaraan?',
+        ),
         content: Text(
           'Semua riwayat servis, jadwal, dan pengingat untuk '
           '${vehicle.name} juga akan dihapus. Tindakan ini tidak dapat '
@@ -244,6 +277,72 @@ class VehicleDetailScreen extends ConsumerWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(content: Text(message ?? 'Kendaraan belum dapat dihapus.')),
+      );
+  }
+
+  Future<void> _confirmArchive(
+    BuildContext context,
+    WidgetRef ref,
+    Vehicle vehicle,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Arsipkan kendaraan?'),
+        content: Text(
+          '${vehicle.name} tidak akan muncul di daftar aktif dan semua '
+          'pengingat lokalnya akan dibatalkan. Riwayat tetap tersimpan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Arsipkan'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final success = await ref
+        .read(vehicleControllerProvider.notifier)
+        .archiveVehicle(vehicle.id);
+    if (!context.mounted) return;
+    if (success) {
+      if (onDeleted case final callback?) {
+        callback();
+      } else {
+        Navigator.of(context).maybePop();
+      }
+    } else {
+      _showMessage(context, ref.read(vehicleControllerProvider).errorMessage);
+    }
+  }
+
+  Future<void> _restore(
+    BuildContext context,
+    WidgetRef ref,
+    Vehicle vehicle,
+  ) async {
+    final success = await ref
+        .read(vehicleControllerProvider.notifier)
+        .restoreVehicle(vehicle.id);
+    if (!context.mounted) return;
+    _showMessage(
+      context,
+      success
+          ? '${vehicle.name} dipulihkan ke daftar kendaraan aktif.'
+          : ref.read(vehicleControllerProvider).errorMessage,
+    );
+  }
+
+  void _showMessage(BuildContext context, String? message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(message ?? 'Perubahan belum dapat disimpan.')),
       );
   }
 }
@@ -300,6 +399,13 @@ class _VehicleHeader extends StatelessWidget {
                 avatar: const Icon(Icons.check_circle_rounded, size: 18),
                 label: const Text('Kendaraan aktif'),
                 visualDensity: VisualDensity.compact,
+              ),
+            ],
+            if (vehicle.isArchived) ...[
+              const SizedBox(height: 12),
+              const Chip(
+                avatar: Icon(Icons.archive_outlined, size: 18),
+                label: Text('Kendaraan diarsipkan'),
               ),
             ],
           ],

@@ -7,6 +7,7 @@ class Vehicle {
     required this.year,
     required this.plateNumber,
     required this.currentOdometer,
+    this.isArchived = false,
     this.createdAt,
     this.updatedAt,
   });
@@ -18,6 +19,7 @@ class Vehicle {
   final int year;
   final String plateNumber;
   final int currentOdometer;
+  final bool isArchived;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -30,6 +32,7 @@ class Vehicle {
       year: _intFrom(map['year']),
       plateNumber: map['plateNumber'] as String? ?? '',
       currentOdometer: _intFrom(map['currentOdometer']),
+      isArchived: map['isArchived'] as bool? ?? false,
       createdAt: _dateTimeFrom(map['createdAt']),
       updatedAt: _dateTimeFrom(map['updatedAt']),
     );
@@ -43,6 +46,7 @@ class Vehicle {
       'year': year,
       'plateNumber': plateNumber,
       'currentOdometer': currentOdometer,
+      'isArchived': isArchived,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
@@ -56,6 +60,7 @@ class Vehicle {
     int? year,
     String? plateNumber,
     int? currentOdometer,
+    bool? isArchived,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -67,6 +72,7 @@ class Vehicle {
       year: year ?? this.year,
       plateNumber: plateNumber ?? this.plateNumber,
       currentOdometer: currentOdometer ?? this.currentOdometer,
+      isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

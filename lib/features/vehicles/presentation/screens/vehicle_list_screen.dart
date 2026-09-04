@@ -17,6 +17,7 @@ class VehicleListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vehiclesValue = ref.watch(vehiclesProvider);
+    final archivedValue = ref.watch(archivedVehiclesProvider);
     final activeVehicleValue = ref.watch(activeVehicleProvider);
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
@@ -39,7 +40,10 @@ class VehicleListScreen extends ConsumerWidget {
             onRetry: () => ref.invalidate(vehiclesProvider),
           ),
           data: (vehicles) {
-            if (vehicles.isEmpty) {
+            final archived = archivedValue.value ?? const <Vehicle>[];
+            if (vehicles.isEmpty &&
+                archived.isEmpty &&
+                !archivedValue.isLoading) {
               return EmptyState(
                 key: const ValueKey('vehicle-empty'),
                 icon: Icons.two_wheeler_rounded,
@@ -56,24 +60,56 @@ class VehicleListScreen extends ConsumerWidget {
               key: const ValueKey('vehicle-list'),
               onRefresh: () async {
                 ref.invalidate(vehiclesProvider);
-                await ref.read(vehiclesProvider.future);
+                ref.invalidate(archivedVehiclesProvider);
+                await Future.wait([
+                  ref.read(vehiclesProvider.future),
+                  ref.read(archivedVehiclesProvider.future),
+                ]);
               },
-              child: ListView.separated(
+              child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
-                itemCount: vehicles.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final vehicle = vehicles[index];
-                  final isActive = activeVehicleValue.value?.id == vehicle.id;
-                  return VehicleCard(
-                    vehicle: vehicle,
-                    isActive: isActive,
-                    isSelecting: activeVehicleValue.isLoading,
-                    onTap: () => _openDetail(context, vehicle),
-                    onSelect: () => _selectVehicle(context, ref, vehicle),
-                  );
-                },
+                children: [
+                  if (vehicles.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text('Tidak ada kendaraan aktif.'),
+                    ),
+                  for (final vehicle in vehicles) ...[
+                    VehicleCard(
+                      vehicle: vehicle,
+                      isActive: activeVehicleValue.value?.id == vehicle.id,
+                      isSelecting: activeVehicleValue.isLoading,
+                      onTap: () => _openDetail(context, vehicle),
+                      onSelect: () => _selectVehicle(context, ref, vehicle),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (archivedValue.isLoading) ...[
+                    const SizedBox(height: 16),
+                    const LinearProgressIndicator(),
+                  ],
+                  if (archived.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      'Kendaraan diarsipkan',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    for (final vehicle in archived) ...[
+                      VehicleCard(
+                        vehicle: vehicle,
+                        isActive: false,
+                        showSelectAction: false,
+                        onTap: () => _openDetail(context, vehicle),
+                        onSelect: null,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ],
+                ],
               ),
             );
           },

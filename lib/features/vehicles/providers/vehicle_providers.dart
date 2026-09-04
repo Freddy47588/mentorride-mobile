@@ -4,6 +4,7 @@ import 'package:mentorride/features/auth/providers/auth_providers.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 import 'package:mentorride/features/vehicles/presentation/controllers/vehicle_controller.dart';
 import 'package:mentorride/features/vehicles/providers/vehicle_repository_provider.dart';
+import 'package:mentorride/features/vehicles/domain/services/active_vehicle_selector.dart';
 
 export 'package:mentorride/features/vehicles/providers/vehicle_repository_provider.dart';
 
@@ -11,7 +12,27 @@ final vehiclesProvider = StreamProvider<List<Vehicle>>((ref) {
   final session = ref.watch(authSessionProvider).value;
   if (session == null) return Stream.value(const <Vehicle>[]);
 
-  return ref.watch(vehicleRepositoryProvider).watchVehicles(session.uid);
+  return ref
+      .watch(vehicleRepositoryProvider)
+      .watchVehicles(session.uid)
+      .map(
+        (vehicles) => vehicles
+            .where((vehicle) => !vehicle.isArchived)
+            .toList(growable: false),
+      );
+});
+
+final archivedVehiclesProvider = StreamProvider<List<Vehicle>>((ref) {
+  final session = ref.watch(authSessionProvider).value;
+  if (session == null) return Stream.value(const <Vehicle>[]);
+  return ref
+      .watch(vehicleRepositoryProvider)
+      .watchVehicles(session.uid)
+      .map(
+        (vehicles) => vehicles
+            .where((vehicle) => vehicle.isArchived)
+            .toList(growable: false),
+      );
 });
 
 final vehicleListProvider = vehiclesProvider;
@@ -63,9 +84,7 @@ class ActiveVehicleController extends AsyncNotifier<Vehicle?> {
 
     final store = ref.watch(activeVehicleStoreProvider);
     final storedId = await store.read(session.uid);
-    final selected =
-        _findVehicle(vehicles, storedId) ??
-        (vehicles.isEmpty ? null : vehicles.first);
+    final selected = ActiveVehicleSelector.select(vehicles, storedId);
 
     if (selected == null) {
       if (storedId != null) await store.clear(session.uid);
@@ -89,7 +108,10 @@ class ActiveVehicleController extends AsyncNotifier<Vehicle?> {
         vehiclesValue.value ??
         await ref.read(vehiclesProvider.future) ??
         const <Vehicle>[];
-    final selected = _findVehicle(vehicles, vehicleId);
+    final selected = ActiveVehicleSelector.select(
+      vehicles.where((vehicle) => vehicle.id == vehicleId).toList(),
+      vehicleId,
+    );
     if (selected == null) return false;
 
     state = const AsyncLoading<Vehicle?>();
@@ -103,13 +125,5 @@ class ActiveVehicleController extends AsyncNotifier<Vehicle?> {
       state = AsyncError(error, stackTrace);
       return false;
     }
-  }
-
-  Vehicle? _findVehicle(List<Vehicle> vehicles, String? id) {
-    if (id == null || id.isEmpty) return null;
-    for (final vehicle in vehicles) {
-      if (vehicle.id == id) return vehicle;
-    }
-    return null;
   }
 }
