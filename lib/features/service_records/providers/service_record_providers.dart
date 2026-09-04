@@ -12,6 +12,20 @@ import 'package:mentorride/features/vehicles/providers/vehicle_providers.dart';
 
 export 'package:mentorride/features/service_records/domain/models/service_record_filter.dart';
 
+enum ServiceRecordViewMode { list, timeline }
+
+final serviceRecordViewModeProvider =
+    NotifierProvider<ServiceRecordViewModeController, ServiceRecordViewMode>(
+      ServiceRecordViewModeController.new,
+    );
+
+class ServiceRecordViewModeController extends Notifier<ServiceRecordViewMode> {
+  @override
+  ServiceRecordViewMode build() => ServiceRecordViewMode.list;
+
+  void select(ServiceRecordViewMode value) => state = value;
+}
+
 final serviceRecordRepositoryProvider = Provider<ServiceRecordRepository>((
   ref,
 ) {

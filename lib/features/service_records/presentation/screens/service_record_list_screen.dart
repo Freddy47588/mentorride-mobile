@@ -261,6 +261,7 @@ class _HistoryContent extends ConsumerWidget {
     final records = ref.watch(filteredServiceRecordsProvider);
     final statistics = ref.watch(filteredMaintenanceStatisticsProvider);
     final filter = ref.watch(serviceRecordFilterProvider);
+    final viewMode = ref.watch(serviceRecordViewModeProvider);
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 220);
@@ -290,7 +291,9 @@ class _HistoryContent extends ConsumerWidget {
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       child: RefreshIndicator(
-        key: ValueKey(items.isEmpty ? 'history-empty' : 'history-list'),
+        key: ValueKey(
+          '${items.isEmpty ? 'history-empty' : 'history-list'}-${viewMode.name}',
+        ),
         onRefresh: () async {
           ref.invalidate(serviceRecordsProvider);
           await ref.read(serviceRecordsProvider.future);
@@ -321,6 +324,32 @@ class _HistoryContent extends ConsumerWidget {
                 onResetFilters: onResetFilters,
               ),
             ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SegmentedButton<ServiceRecordViewMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ServiceRecordViewMode.list,
+                        icon: Icon(Icons.view_list_outlined),
+                        label: Text('Daftar'),
+                      ),
+                      ButtonSegment(
+                        value: ServiceRecordViewMode.timeline,
+                        icon: Icon(Icons.timeline_rounded),
+                        label: Text('Timeline'),
+                      ),
+                    ],
+                    selected: {viewMode},
+                    onSelectionChanged: (values) => ref
+                        .read(serviceRecordViewModeProvider.notifier)
+                        .select(values.first),
+                  ),
+                ),
+              ),
+            ),
             if (items.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
@@ -345,12 +374,37 @@ class _HistoryContent extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                 sliver: SliverList.builder(
                   itemCount: items.length,
-                  itemBuilder: (context, index) => ServiceRecordTimelineTile(
-                    record: items[index],
-                    isFirst: index == 0,
-                    isLast: index == items.length - 1,
-                    onTap: () => context.push('/history/${items[index].id}'),
-                  ),
+                  itemBuilder: (context, index) =>
+                      viewMode == ServiceRecordViewMode.timeline
+                      ? ServiceRecordTimelineTile(
+                          record: items[index],
+                          isFirst: index == 0,
+                          isLast: index == items.length - 1,
+                          onTap: () =>
+                              context.push('/history/${items[index].id}'),
+                        )
+                      : Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            onTap: () =>
+                                context.push('/history/${items[index].id}'),
+                            leading: const Icon(Icons.build_circle_outlined),
+                            title: Text(
+                              items[index].items.isEmpty
+                                  ? 'Servis kendaraan'
+                                  : items[index].items.first.name,
+                            ),
+                            subtitle: Text(
+                              '${AppFormatters.date(items[index].serviceDate)} · '
+                              '${AppFormatters.kilometer(items[index].odometer)}\n'
+                              '${items[index].workshop.isEmpty ? 'Bengkel tidak dicatat' : items[index].workshop}',
+                            ),
+                            isThreeLine: true,
+                            trailing: Text(
+                              AppFormatters.rupiah(items[index].totalCost),
+                            ),
+                          ),
+                        ),
                 ),
               ),
           ],
