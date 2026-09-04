@@ -25,7 +25,7 @@ class OdometerPeriodController extends Notifier<OdometerPeriod> {
 
 final odometerLogsProvider = StreamProvider<List<OdometerLog>>((ref) {
   final uid = ref.watch(authSessionProvider).value?.uid;
-  final vehicleId = ref.watch(activeVehicleProvider).value?.id;
+  final vehicleId = ref.watch(activeVehicleIdProvider);
   if (uid == null || vehicleId == null) return Stream.value(const []);
   return ref
       .watch(odometerLogRepositoryProvider)

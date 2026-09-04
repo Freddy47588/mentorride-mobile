@@ -57,7 +57,9 @@ final activeVehicleProvider =
     );
 
 final activeVehicleIdProvider = Provider<String?>((ref) {
-  return ref.watch(activeVehicleProvider).value?.id;
+  final activeVehicle = ref.watch(activeVehicleProvider);
+  if (activeVehicle.isLoading || activeVehicle.hasError) return null;
+  return activeVehicle.value?.id;
 });
 
 final vehicleControllerProvider =
@@ -71,16 +73,7 @@ class ActiveVehicleController extends AsyncNotifier<Vehicle?> {
     final session = ref.watch(authSessionProvider).value;
     if (session == null) return null;
 
-    final vehiclesValue = ref.watch(vehiclesProvider);
-    if (vehiclesValue.hasError) {
-      Error.throwWithStackTrace(
-        vehiclesValue.error!,
-        vehiclesValue.stackTrace ?? StackTrace.current,
-      );
-    }
-
-    final vehicles = vehiclesValue.value;
-    if (vehicles == null) return null;
+    final vehicles = await ref.watch(vehiclesProvider.future);
 
     final store = ref.watch(activeVehicleStoreProvider);
     final storedId = await store.read(session.uid);

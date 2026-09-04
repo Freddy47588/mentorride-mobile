@@ -31,7 +31,6 @@ class ServiceScheduleListScreen extends ConsumerWidget {
         ],
       ),
       body: activeVehicle.when(
-        skipLoadingOnReload: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => ErrorState(
           message: 'Kendaraan aktif belum dapat dimuat.',
@@ -60,7 +59,10 @@ class ServiceScheduleListScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: activeVehicle.value == null
+      floatingActionButton:
+          activeVehicle.isLoading ||
+              activeVehicle.hasError ||
+              activeVehicle.value == null
           ? null
           : FloatingActionButton(
               onPressed: () => ServiceScheduleNavigation.openNew<void>(context),

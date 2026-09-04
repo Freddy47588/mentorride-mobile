@@ -36,7 +36,6 @@ class DashboardScreen extends ConsumerWidget {
         ],
       ),
       body: activeVehicle.when(
-        skipLoadingOnReload: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => ErrorState(
           message: 'Kendaraan aktif belum dapat dimuat.',

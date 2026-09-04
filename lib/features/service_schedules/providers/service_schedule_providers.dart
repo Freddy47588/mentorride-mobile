@@ -40,7 +40,7 @@ class ActiveServiceScheduleScope {
 final activeServiceScheduleScopeProvider =
     Provider<ActiveServiceScheduleScope?>((ref) {
       final uid = ref.watch(authSessionProvider).value?.uid;
-      final vehicleId = ref.watch(activeVehicleProvider).value?.id;
+      final vehicleId = ref.watch(activeVehicleIdProvider);
       if (uid == null || vehicleId == null) return null;
       return ActiveServiceScheduleScope(uid: uid, vehicleId: vehicleId);
     });

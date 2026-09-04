@@ -21,7 +21,10 @@ final serviceRecordViewModeProvider =
 
 class ServiceRecordViewModeController extends Notifier<ServiceRecordViewMode> {
   @override
-  ServiceRecordViewMode build() => ServiceRecordViewMode.list;
+  ServiceRecordViewMode build() {
+    ref.watch(authSessionProvider);
+    return ServiceRecordViewMode.list;
+  }
 
   void select(ServiceRecordViewMode value) => state = value;
 }
@@ -43,7 +46,7 @@ final activeServiceRecordScopeProvider = Provider<ActiveServiceRecordScope?>((
   ref,
 ) {
   final uid = ref.watch(authSessionProvider).value?.uid;
-  final vehicleId = ref.watch(activeVehicleProvider).value?.id;
+  final vehicleId = ref.watch(activeVehicleIdProvider);
   if (uid == null || vehicleId == null) return null;
   return ActiveServiceRecordScope(uid: uid, vehicleId: vehicleId);
 });
@@ -75,6 +78,7 @@ final serviceRecordFilterProvider =
 class ServiceRecordFilterController extends Notifier<ServiceRecordFilter> {
   @override
   ServiceRecordFilter build() {
+    ref.watch(authSessionProvider);
     return ServiceRecordFilter(
       type: ServiceRecordFilterType.all,
       anchor: DateTime.now(),
