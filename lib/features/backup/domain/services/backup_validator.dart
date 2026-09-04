@@ -20,18 +20,26 @@ abstract final class BackupValidator {
     for (var index = 0; index < vehiclesRaw.length; index++) {
       vehicles.add(_vehicle(_object(vehiclesRaw[index], 'kendaraan'), index));
     }
+    _ensureUniqueIds(vehicles.map((data) => data.vehicle.id), 'kendaraan');
     return MentorRideBackup(exportedAt: exportedAt, vehicles: vehicles);
   }
 
   static BackupVehicleData _vehicle(Map<String, Object?> map, int index) {
     final context = 'kendaraan ke-${index + 1}';
     final id = _requiredString(map, 'id', context);
+    final year = _nonNegativeInt(map, 'year', context);
+    final maximumYear = DateTime.now().year + 1;
+    if (year < 1900 || year > maximumYear) {
+      throw AppException(
+        'Tahun pada $context harus antara 1900 dan $maximumYear.',
+      );
+    }
     final vehicle = Vehicle(
       id: id,
       name: _requiredString(map, 'name', context),
       brand: _requiredString(map, 'brand', context),
       model: _requiredString(map, 'model', context),
-      year: _nonNegativeInt(map, 'year', context),
+      year: year,
       plateNumber: _requiredString(map, 'plateNumber', context),
       currentOdometer: _nonNegativeInt(map, 'currentOdometer', context),
       isArchived: _optionalBool(map, 'isArchived') ?? false,
@@ -47,6 +55,9 @@ abstract final class BackupValidator {
     final logs = _requiredList(map, 'odometerLogs', context)
         .map((value) => _log(_object(value, 'riwayat kilometer'), context))
         .toList(growable: false);
+    _ensureUniqueIds(records.map((record) => record.id), 'riwayat servis');
+    _ensureUniqueIds(schedules.map((schedule) => schedule.id), 'jadwal servis');
+    _ensureUniqueIds(logs.map((log) => log.id), 'riwayat kilometer');
     var highestObservedOdometer = 0;
     for (final record in records) {
       if (record.odometer > highestObservedOdometer) {
@@ -57,9 +68,9 @@ abstract final class BackupValidator {
       ..sort((a, b) => a.recordedAt!.compareTo(b.recordedAt!));
     var previousLogOdometer = -1;
     for (final log in chronologicalLogs) {
-      if (log.odometer < previousLogOdometer) {
+      if (log.odometer <= previousLogOdometer) {
         throw const AppException(
-          'Riwayat kilometer dalam cadangan tidak monoton.',
+          'Riwayat kilometer dalam cadangan harus selalu meningkat.',
         );
       }
       previousLogOdometer = log.odometer;
@@ -239,5 +250,14 @@ abstract final class BackupValidator {
       throw AppException('Field $field pada $context tidak valid.');
     }
     return parsed;
+  }
+
+  static void _ensureUniqueIds(Iterable<String> ids, String context) {
+    final seen = <String>{};
+    for (final id in ids) {
+      if (!seen.add(id)) {
+        throw AppException('ID $context dalam cadangan harus unik.');
+      }
+    }
   }
 }

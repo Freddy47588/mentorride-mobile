@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mentorride/core/errors/app_exception.dart';
 import 'package:mentorride/core/notifications/notification_id.dart';
 import 'package:mentorride/features/backup/domain/models/mentorride_backup.dart';
 import 'package:mentorride/features/backup/domain/repositories/backup_repository.dart';
@@ -183,15 +184,30 @@ class FirestoreBackupRepository implements BackupRepository {
       }
     }
 
-    for (var start = 0; start < writes.length; start += _pageSize) {
-      final batch = _firestore.batch();
-      final end = start + _pageSize < writes.length
-          ? start + _pageSize
-          : writes.length;
-      for (final write in writes.sublist(start, end)) {
-        batch.set(write.reference, write.data);
+    var committedWriteCount = 0;
+    try {
+      for (var start = 0; start < writes.length; start += _pageSize) {
+        final batch = _firestore.batch();
+        final end = start + _pageSize < writes.length
+            ? start + _pageSize
+            : writes.length;
+        for (final write in writes.sublist(start, end)) {
+          batch.set(write.reference, write.data);
+        }
+        await batch.commit();
+        committedWriteCount = end;
       }
-      await batch.commit();
+    } on Object catch (error, stackTrace) {
+      final rollbackSucceeded = await _rollbackWrites(
+        writes.take(committedWriteCount),
+      );
+      if (!rollbackSucceeded) {
+        throw const AppException(
+          'Pemulihan terhenti dan sebagian data baru mungkin masih tersimpan. '
+          'Periksa daftar kendaraan sebelum mencoba kembali.',
+        );
+      }
+      Error.throwWithStackTrace(_restoreError(error), stackTrace);
     }
     return BackupRestoreResult(
       vehicleIdMapping: idMapping,
@@ -225,6 +241,52 @@ class FirestoreBackupRepository implements BackupRepository {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
     return null;
+  }
+
+  Future<bool> _rollbackWrites(Iterable<_Write> committedWrites) async {
+    final references = committedWrites
+        .map((write) => write.reference)
+        .toList(growable: false)
+        .reversed
+        .toList(growable: false);
+    try {
+      for (var start = 0; start < references.length; start += _pageSize) {
+        final batch = _firestore.batch();
+        final end = start + _pageSize < references.length
+            ? start + _pageSize
+            : references.length;
+        for (final reference in references.sublist(start, end)) {
+          batch.delete(reference);
+        }
+        await batch.commit();
+      }
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  AppException _restoreError(Object error) {
+    if (error is AppException) return error;
+    if (error is FirebaseException) {
+      return switch (error.code) {
+        'permission-denied' => const AppException(
+          'Anda tidak memiliki izin untuk memulihkan data.',
+          code: 'permission-denied',
+        ),
+        'unavailable' || 'deadline-exceeded' => const AppException(
+          'Pemulihan belum dapat diselesaikan. Periksa koneksi Anda.',
+          code: 'unavailable',
+        ),
+        _ => AppException(
+          'Pemulihan data belum dapat diselesaikan. Silakan coba lagi.',
+          code: error.code,
+        ),
+      };
+    }
+    return const AppException(
+      'Pemulihan data belum dapat diselesaikan. Silakan coba lagi.',
+    );
   }
 }
 

@@ -58,12 +58,14 @@ class BackupService {
     required MentorRideBackup backup,
   }) async {
     final needsReminderPermission = backup.vehicles.any(
-      (vehicle) => vehicle.serviceSchedules.any(
-        (schedule) =>
-            schedule.reminderEnabled &&
-            !schedule.isCompleted &&
-            schedule.reminderAt.isAfter(DateTime.now()),
-      ),
+      (vehicle) =>
+          !vehicle.vehicle.isArchived &&
+          vehicle.serviceSchedules.any(
+            (schedule) =>
+                schedule.reminderEnabled &&
+                !schedule.isCompleted &&
+                schedule.reminderAt.isAfter(DateTime.now()),
+          ),
     );
     if (needsReminderPermission) {
       var permission = await _reminderScheduler.permissionStatus();
@@ -78,14 +80,29 @@ class BackupService {
     }
 
     final result = await _repository.restoreBackup(uid: uid, backup: backup);
-    for (final reminder in result.reminders) {
-      await _reminderScheduler.schedule(
-        id: reminder.notificationId,
-        title: 'Pengingat servis: ${reminder.title}',
-        body:
-            '${reminder.serviceType} untuk kendaraan Anda segera dijadwalkan.',
-        scheduledAt: reminder.reminderAt,
-        payload: '/schedules/${reminder.scheduleId}',
+    final attemptedReminderIds = <int>[];
+    try {
+      for (final reminder in result.reminders) {
+        attemptedReminderIds.add(reminder.notificationId);
+        await _reminderScheduler.schedule(
+          id: reminder.notificationId,
+          title: 'Pengingat servis: ${reminder.title}',
+          body:
+              '${reminder.serviceType} untuk kendaraan Anda segera dijadwalkan.',
+          scheduledAt: reminder.reminderAt,
+          payload: '/schedules/${reminder.scheduleId}',
+        );
+      }
+    } on Object {
+      try {
+        await _reminderScheduler.cancelMany(attemptedReminderIds);
+      } on Object {
+        // Pembersihan best-effort; hasil restore tetap dilaporkan dengan jelas.
+      }
+      return result.copyWith(
+        warningMessage:
+            'Data berhasil dipulihkan, tetapi pengingat lokal belum dapat '
+            'diaktifkan. Edit jadwal terkait untuk mencoba kembali.',
       );
     }
     return result;

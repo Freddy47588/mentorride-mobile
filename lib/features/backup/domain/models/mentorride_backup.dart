@@ -35,6 +35,7 @@ class BackupRestoreResult {
     required this.scheduleCount,
     required this.odometerLogCount,
     required this.reminders,
+    this.warningMessage,
   });
 
   final Map<String, String> vehicleIdMapping;
@@ -43,6 +44,19 @@ class BackupRestoreResult {
   final int scheduleCount;
   final int odometerLogCount;
   final List<RestoredReminder> reminders;
+  final String? warningMessage;
+
+  BackupRestoreResult copyWith({String? warningMessage}) {
+    return BackupRestoreResult(
+      vehicleIdMapping: vehicleIdMapping,
+      vehicleCount: vehicleCount,
+      recordCount: recordCount,
+      scheduleCount: scheduleCount,
+      odometerLogCount: odometerLogCount,
+      reminders: reminders,
+      warningMessage: warningMessage ?? this.warningMessage,
+    );
+  }
 }
 
 class RestoredReminder {

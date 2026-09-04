@@ -53,6 +53,61 @@ void main() {
     );
   });
 
+  test('ID kendaraan duplikat ditolak sebelum restore', () {
+    final map = jsonDecode(BackupSerializer.serialize(_backup())) as Map;
+    final vehicles = map['vehicles'] as List;
+    vehicles.add(Map<String, Object?>.from(vehicles.single as Map));
+
+    expect(
+      () => BackupSerializer.deserialize(jsonEncode(map)),
+      throwsA(
+        isA<AppException>().having(
+          (error) => error.message,
+          'message',
+          contains('harus unik'),
+        ),
+      ),
+    );
+  });
+
+  test('tahun kendaraan di luar rentang valid ditolak', () {
+    final map = jsonDecode(BackupSerializer.serialize(_backup())) as Map;
+    final vehicle = (map['vehicles'] as List).single as Map;
+    vehicle['year'] = 0;
+
+    expect(
+      () => BackupSerializer.deserialize(jsonEncode(map)),
+      throwsA(
+        isA<AppException>().having(
+          (error) => error.message,
+          'message',
+          contains('Tahun'),
+        ),
+      ),
+    );
+  });
+
+  test('log odometer duplikat ditolak sebagai kenaikan semu', () {
+    final map = jsonDecode(BackupSerializer.serialize(_backup())) as Map;
+    final vehicle = (map['vehicles'] as List).single as Map;
+    final logs = vehicle['odometerLogs'] as List;
+    final duplicate = Map<String, Object?>.from(logs.single as Map)
+      ..['id'] = 'log-2'
+      ..['recordedAt'] = DateTime.utc(2026, 8, 2).toIso8601String();
+    logs.add(duplicate);
+
+    expect(
+      () => BackupSerializer.deserialize(jsonEncode(map)),
+      throwsA(
+        isA<AppException>().having(
+          (error) => error.message,
+          'message',
+          contains('selalu meningkat'),
+        ),
+      ),
+    );
+  });
+
   test('restore ID remapping membuat ID baru dan stabil per kendaraan', () {
     var counter = 0;
     final mapping = BackupIdRemapper.vehicleIds([
