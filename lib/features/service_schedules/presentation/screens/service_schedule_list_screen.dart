@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:mentorride/app/router/app_routes.dart';
 import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
 import 'package:mentorride/features/service_schedules/presentation/navigation/service_schedule_completion_flow.dart';
 import 'package:mentorride/features/service_schedules/presentation/navigation/service_schedule_navigation.dart';
@@ -17,7 +19,17 @@ class ServiceScheduleListScreen extends ConsumerWidget {
     final activeVehicle = ref.watch(activeVehicleProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Jadwal servis')),
+      appBar: AppBar(
+        title: const Text('Jadwal servis'),
+        actions: [
+          IconButton(
+            tooltip: 'Kalender perawatan',
+            onPressed: () => context.push(AppRoutes.maintenanceCalendar),
+            icon: const Icon(Icons.calendar_month_rounded),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: activeVehicle.when(
         skipLoadingOnReload: true,
         loading: () => const Center(child: CircularProgressIndicator()),

@@ -12,6 +12,9 @@ abstract final class AppRoutes {
   static const vehicleNew = '/vehicles/new';
   static const serviceRecordNew = '/history/new';
   static const serviceScheduleNew = '/schedules/new';
+  static const maintenanceHealth = '/maintenance-health';
+  static const odometerHistory = '/odometer-history';
+  static const maintenanceCalendar = '/maintenance-calendar';
 
   static String vehicleDetail(String vehicleId) => '/vehicles/$vehicleId';
 

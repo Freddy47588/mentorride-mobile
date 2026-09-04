@@ -14,6 +14,9 @@ import 'package:mentorride/features/navigation/presentation/splash_screen.dart';
 import 'package:mentorride/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:mentorride/features/onboarding/providers/onboarding_providers.dart';
 import 'package:mentorride/features/profile/presentation/screens/profile_screen.dart';
+import 'package:mentorride/features/maintenance_health/presentation/screens/maintenance_health_screen.dart';
+import 'package:mentorride/features/maintenance_calendar/presentation/screens/maintenance_calendar_screen.dart';
+import 'package:mentorride/features/odometer/presentation/screens/odometer_history_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_detail_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_form_screen.dart';
 import 'package:mentorride/features/service_records/presentation/screens/service_record_list_screen.dart';
@@ -155,6 +158,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const VehicleFormScreen(),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.maintenanceHealth,
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: const MaintenanceHealthScreen(),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.odometerHistory,
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: const OdometerHistoryScreen(),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.maintenanceCalendar,
+        pageBuilder: (context, state) => _transitionPage(
+          context: context,
+          state: state,
+          child: const MaintenanceCalendarScreen(),
         ),
       ),
       GoRoute(
