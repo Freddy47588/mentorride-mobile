@@ -61,6 +61,123 @@ void main() {
       expect(events, ['repository.update', 'scheduler.schedule']);
     });
 
+    test('update membatalkan ID notifikasi lama yang berbeda', () async {
+      final events = <String>[];
+      final repository = _FakeServiceScheduleRepository(events);
+      final scheduler = _FakeReminderScheduler(events);
+      final coordinator = ServiceScheduleCoordinator(repository, scheduler);
+      final previous = _pendingSchedule(localNotificationId: 7);
+      final updated = previous.copyWith(title: 'Servis berkala terbaru');
+
+      await coordinator.update(
+        uid: 'user-1',
+        vehicleId: 'vehicle-1',
+        schedule: updated,
+        previousSchedule: previous,
+      );
+
+      final stableId = StableNotificationId.fromUuid(previous.id);
+      expect(scheduler.cancelled, [7]);
+      expect(scheduler.scheduled.single.id, stableId);
+      expect(events, [
+        'scheduler.cancel',
+        'repository.update',
+        'scheduler.schedule',
+      ]);
+    });
+
+    test('update memulihkan ID lama bila write Firestore gagal', () async {
+      final events = <String>[];
+      final repository = _FakeServiceScheduleRepository(
+        events,
+        failUpdate: true,
+      );
+      final scheduler = _FakeReminderScheduler(events);
+      final coordinator = ServiceScheduleCoordinator(repository, scheduler);
+      final previous = _pendingSchedule(localNotificationId: 7);
+
+      await expectLater(
+        coordinator.update(
+          uid: 'user-1',
+          vehicleId: 'vehicle-1',
+          schedule: previous.copyWith(title: 'Judul baru'),
+          previousSchedule: previous,
+        ),
+        throwsStateError,
+      );
+
+      expect(scheduler.cancelled, [7]);
+      expect(scheduler.scheduled.single.id, 7);
+      expect(events, [
+        'scheduler.cancel',
+        'repository.update',
+        'scheduler.schedule',
+      ]);
+    });
+
+    test('update merollback data bila penjadwalan baru gagal', () async {
+      final events = <String>[];
+      final repository = _FakeServiceScheduleRepository(events);
+      final scheduler = _FakeReminderScheduler(
+        events,
+        scheduleFailuresRemaining: 1,
+      );
+      final coordinator = ServiceScheduleCoordinator(repository, scheduler);
+      final previous = _pendingSchedule(localNotificationId: 7);
+
+      await expectLater(
+        coordinator.update(
+          uid: 'user-1',
+          vehicleId: 'vehicle-1',
+          schedule: previous.copyWith(title: 'Judul baru'),
+          previousSchedule: previous,
+        ),
+        throwsStateError,
+      );
+
+      final stableId = StableNotificationId.fromUuid(previous.id);
+      expect(repository.updateCalls, 2);
+      expect(scheduler.scheduled.map((value) => value.id), [
+        stableId,
+        stableId,
+      ]);
+      expect(events, [
+        'scheduler.cancel',
+        'repository.update',
+        'scheduler.schedule',
+        'repository.update',
+        'scheduler.schedule',
+      ]);
+    });
+
+    test('delete memulihkan pengingat bila penghapusan data gagal', () async {
+      final events = <String>[];
+      final repository = _FakeServiceScheduleRepository(
+        events,
+        failDelete: true,
+      );
+      final scheduler = _FakeReminderScheduler(events);
+      final coordinator = ServiceScheduleCoordinator(repository, scheduler);
+      final schedule = _pendingSchedule(localNotificationId: 321);
+
+      await expectLater(
+        coordinator.delete(
+          uid: 'user-1',
+          vehicleId: 'vehicle-1',
+          schedule: schedule,
+        ),
+        throwsStateError,
+      );
+
+      expect(scheduler.cancelled, [321]);
+      expect(scheduler.scheduled.single.id, 321);
+      expect(events, [
+        'scheduler.cancel',
+        'repository.delete',
+        'scheduler.schedule',
+      ]);
+    });
+
     test('delete membatalkan pengingat sebelum menghapus data', () async {
       final events = <String>[];
       final repository = _FakeServiceScheduleRepository(events);
@@ -99,8 +216,36 @@ void main() {
       expect(completed.reminderEnabled, isFalse);
       expect(completed.localNotificationId, expectedNotificationId);
       expect(repository.updatedSchedule, same(completed));
-      expect(scheduler.cancelled, [expectedNotificationId]);
+      expect(scheduler.cancelled, [7]);
       expect(events, ['scheduler.cancel', 'repository.update']);
+    });
+
+    test('complete memulihkan pengingat bila update status gagal', () async {
+      final events = <String>[];
+      final repository = _FakeServiceScheduleRepository(
+        events,
+        failUpdate: true,
+      );
+      final scheduler = _FakeReminderScheduler(events);
+      final coordinator = ServiceScheduleCoordinator(repository, scheduler);
+      final schedule = _pendingSchedule(localNotificationId: 77);
+
+      await expectLater(
+        coordinator.complete(
+          uid: 'user-1',
+          vehicleId: 'vehicle-1',
+          schedule: schedule,
+        ),
+        throwsStateError,
+      );
+
+      expect(scheduler.cancelled, [77]);
+      expect(scheduler.scheduled.single.id, 77);
+      expect(events, [
+        'scheduler.cancel',
+        'repository.update',
+        'scheduler.schedule',
+      ]);
     });
 
     test('tidak menyimpan jadwal bila izin pengingat ditolak', () async {
@@ -157,15 +302,22 @@ ServiceSchedule _pendingSchedule({
 }
 
 class _FakeServiceScheduleRepository implements ServiceScheduleRepository {
-  _FakeServiceScheduleRepository(this.events);
+  _FakeServiceScheduleRepository(
+    this.events, {
+    this.failDelete = false,
+    this.failUpdate = false,
+  });
 
   static const createdId = '123e4567-e89b-12d3-a456-426614174000';
 
   final List<String> events;
+  final bool failDelete;
+  final bool failUpdate;
   String? createdUid;
   String? createdVehicleId;
   ServiceSchedule? createdSchedule;
   ServiceSchedule? updatedSchedule;
+  int updateCalls = 0;
   String? deletedUid;
   String? deletedVehicleId;
   String? deletedScheduleId;
@@ -193,6 +345,7 @@ class _FakeServiceScheduleRepository implements ServiceScheduleRepository {
     required String scheduleId,
   }) async {
     events.add('repository.delete');
+    if (failDelete) throw StateError('delete gagal');
     deletedUid = uid;
     deletedVehicleId = vehicleId;
     deletedScheduleId = scheduleId;
@@ -205,6 +358,8 @@ class _FakeServiceScheduleRepository implements ServiceScheduleRepository {
     required ServiceSchedule schedule,
   }) async {
     events.add('repository.update');
+    updateCalls++;
+    if (failUpdate) throw StateError('update gagal');
     updatedSchedule = schedule;
   }
 
@@ -222,11 +377,13 @@ class _FakeReminderScheduler implements ReminderScheduler {
     this.events, {
     this.permission = NotificationPermissionStatus.granted,
     this.requestedPermission = NotificationPermissionStatus.granted,
+    this.scheduleFailuresRemaining = 0,
   });
 
   final List<String> events;
   final NotificationPermissionStatus permission;
   final NotificationPermissionStatus requestedPermission;
+  int scheduleFailuresRemaining;
   final List<_ScheduledReminder> scheduled = [];
   final List<int> cancelled = [];
   int permissionStatusCalls = 0;
@@ -279,6 +436,10 @@ class _FakeReminderScheduler implements ReminderScheduler {
         payload: payload,
       ),
     );
+    if (scheduleFailuresRemaining > 0) {
+      scheduleFailuresRemaining--;
+      throw StateError('schedule gagal');
+    }
   }
 }
 

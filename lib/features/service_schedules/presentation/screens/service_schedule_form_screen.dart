@@ -469,7 +469,7 @@ class _ServiceScheduleFormState extends ConsumerState<_ServiceScheduleForm> {
     setState(() => _isSubmitting = true);
     final controller = ref.read(serviceScheduleControllerProvider.notifier);
     final success = _isEditing
-        ? await controller.update(schedule)
+        ? await controller.update(schedule, previousSchedule: original)
         : await controller.create(schedule) != null;
     if (!mounted) return;
 

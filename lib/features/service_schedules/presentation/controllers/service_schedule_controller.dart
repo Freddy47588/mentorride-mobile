@@ -42,12 +42,16 @@ class ServiceScheduleController extends Notifier<ServiceScheduleActionState> {
     }
   }
 
-  Future<bool> update(ServiceSchedule schedule) {
+  Future<bool> update(
+    ServiceSchedule schedule, {
+    ServiceSchedule? previousSchedule,
+  }) {
     return _run(
       (scope) => _coordinator.update(
         uid: scope.uid,
         vehicleId: scope.vehicleId,
         schedule: schedule,
+        previousSchedule: previousSchedule,
       ),
     );
   }
