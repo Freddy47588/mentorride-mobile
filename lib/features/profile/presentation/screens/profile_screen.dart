@@ -8,6 +8,9 @@ import 'package:mentorride/features/auth/domain/models/auth_session.dart';
 import 'package:mentorride/features/auth/domain/models/user_profile.dart';
 import 'package:mentorride/features/auth/providers/auth_providers.dart';
 import 'package:mentorride/shared/widgets/app_logo.dart';
+import 'package:mentorride/app/theme/theme_mode_store.dart';
+import 'package:mentorride/features/backup/providers/backup_providers.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -22,12 +25,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isCheckingPermission = false;
   bool _isRequestingPermission = false;
   bool _isLoggingOut = false;
+  String _appVersion = '-';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshPermission();
+      _loadVersion();
     });
   }
 
@@ -37,6 +42,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final sessionValue = ref.watch(authSessionProvider);
     final authAction = ref.watch(authControllerProvider);
     final session = sessionValue.value;
+    final backupState = ref.watch(backupControllerProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profil')),
@@ -50,6 +56,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             session: session,
             isProfileLoading: true,
             isAuthBusy: authAction.isSubmitting,
+            isDataBusy: backupState.isBusy,
           );
         },
         error: (error, stackTrace) => _buildContent(
@@ -57,11 +64,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           session: session,
           profileError: 'Informasi profil belum dapat dimuat.',
           isAuthBusy: authAction.isSubmitting,
+          isDataBusy: backupState.isBusy,
         ),
         data: (profile) => _buildContent(
           profile: profile,
           session: session,
           isAuthBusy: authAction.isSubmitting,
+          isDataBusy: backupState.isBusy,
         ),
       ),
     );
@@ -71,6 +80,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required UserProfile? profile,
     required AuthSession? session,
     required bool isAuthBusy,
+    required bool isDataBusy,
     bool isProfileLoading = false,
     String? profileError,
   }) {
@@ -102,7 +112,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
           const SizedBox(height: 16),
           _SectionCard(
-            title: 'Akun',
+            title: 'AKUN',
             children: [
               _InformationTile(
                 icon: Icons.badge_outlined,
@@ -132,6 +142,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 16),
+          _ThemeCard(
+            selected: ref.watch(themeModeProvider).value ?? ThemeMode.system,
+            onSelected: (mode) =>
+                ref.read(themeModeProvider.notifier).select(mode),
+          ),
+          const SizedBox(height: 16),
+          _DataCard(
+            isBusy: isDataBusy,
+            onBackup: _createBackup,
+            onRestore: _restoreBackup,
+          ),
+          const SizedBox(height: 16),
           _NotificationCard(
             status: _permissionStatus,
             errorMessage: _permissionError,
@@ -141,7 +163,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onRefresh: _refreshPermission,
           ),
           const SizedBox(height: 16),
-          const _AboutCard(),
+          _AboutCard(version: _appVersion),
           const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: _isLoggingOut || isAuthBusy ? null : _confirmLogout,
@@ -238,6 +260,72 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       });
       _showSnackBar('Izin notifikasi belum dapat diminta. Silakan coba lagi.');
     }
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() => _appVersion = '${info.version}+${info.buildNumber}');
+      }
+    } on Object {
+      // Versi tetap ditampilkan sebagai tidak tersedia pada platform uji.
+    }
+  }
+
+  Future<void> _createBackup() async {
+    final success = await ref
+        .read(backupControllerProvider.notifier)
+        .createAndShare();
+    if (!mounted) return;
+    final error = ref.read(backupControllerProvider).errorMessage;
+    _showSnackBar(
+      success
+          ? 'Cadangan lengkap siap dibagikan.'
+          : error ?? 'Cadangan belum dapat dibuat.',
+    );
+  }
+
+  Future<void> _restoreBackup() async {
+    final controller = ref.read(backupControllerProvider.notifier);
+    final backup = await controller.pickAndValidate();
+    if (!mounted) return;
+    if (backup == null) {
+      final error = ref.read(backupControllerProvider).errorMessage;
+      if (error != null) _showSnackBar(error);
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Pulihkan cadangan?'),
+        content: Text(
+          'Data dari file cadangan akan ditambahkan ke akun Anda. Data saat '
+          'ini tidak akan dihapus.\n\n${backup.vehicles.length} kendaraan '
+          'akan ditambahkan dengan ID baru.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Pulihkan'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final result = await controller.restore(backup);
+    if (!mounted) return;
+    final error = ref.read(backupControllerProvider).errorMessage;
+    _showSnackBar(
+      result == null
+          ? error ?? 'Cadangan belum dapat dipulihkan.'
+          : '${result.vehicleCount} kendaraan berhasil ditambahkan.',
+    );
   }
 
   Future<void> _showEditNameDialog({
@@ -489,7 +577,7 @@ class _NotificationCard extends StatelessWidget {
     };
 
     return _SectionCard(
-      title: 'Notifikasi',
+      title: 'APLIKASI',
       children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
@@ -539,15 +627,107 @@ class _NotificationCard extends StatelessWidget {
   }
 }
 
-class _AboutCard extends StatelessWidget {
-  const _AboutCard();
+class _ThemeCard extends StatelessWidget {
+  const _ThemeCard({required this.selected, required this.onSelected});
+
+  final ThemeMode selected;
+  final ValueChanged<ThemeMode> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return const _SectionCard(
-      title: 'Tentang MentorRide',
+    return _SectionCard(
+      title: 'PREFERENSI',
+      children: [
+        const ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.palette_outlined),
+          title: Text('Tema'),
+          subtitle: Text('Pilih tampilan sistem, terang, atau gelap.'),
+        ),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment(
+                value: ThemeMode.system,
+                icon: Icon(Icons.settings_brightness_rounded),
+                label: Text('Sistem'),
+              ),
+              ButtonSegment(
+                value: ThemeMode.light,
+                icon: Icon(Icons.light_mode_outlined),
+                label: Text('Terang'),
+              ),
+              ButtonSegment(
+                value: ThemeMode.dark,
+                icon: Icon(Icons.dark_mode_outlined),
+                label: Text('Gelap'),
+              ),
+            ],
+            selected: {selected},
+            onSelectionChanged: (values) => onSelected(values.first),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DataCard extends StatelessWidget {
+  const _DataCard({
+    required this.isBusy,
+    required this.onBackup,
+    required this.onRestore,
+  });
+
+  final bool isBusy;
+  final VoidCallback onBackup;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'DATA',
       children: [
         ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.backup_outlined),
+          title: const Text('Cadangkan data'),
+          subtitle: const Text('Buat file JSON lengkap dan buka menu bagikan.'),
+          onTap: isBusy ? null : onBackup,
+        ),
+        const Divider(height: 1),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.restore_page_outlined),
+          title: const Text('Pulihkan cadangan'),
+          subtitle: const Text(
+            'Tambahkan data dari file tanpa menghapus data saat ini.',
+          ),
+          trailing: isBusy
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : null,
+          onTap: isBusy ? null : onRestore,
+        ),
+      ],
+    );
+  }
+}
+
+class _AboutCard extends StatelessWidget {
+  const _AboutCard({required this.version});
+
+  final String version;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Tentang MentorRide',
+      children: [
+        const ListTile(
           contentPadding: EdgeInsets.zero,
           leading: AppLogo(size: 48),
           title: Text('Perawatan motor lebih tertata'),
@@ -558,6 +738,13 @@ class _AboutCard extends StatelessWidget {
               'servis, serta jadwal perawatan dalam satu tempat.',
             ),
           ),
+        ),
+        const Divider(height: 1),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.info_outline_rounded),
+          title: const Text('Versi aplikasi'),
+          subtitle: Text(version),
         ),
       ],
     );
