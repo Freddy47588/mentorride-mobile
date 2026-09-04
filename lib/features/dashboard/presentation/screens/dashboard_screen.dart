@@ -5,6 +5,8 @@ import 'package:mentorride/features/dashboard/domain/models/dashboard_summary.da
 import 'package:mentorride/features/dashboard/presentation/widgets/dashboard_overview.dart';
 import 'package:mentorride/features/service_records/providers/service_record_providers.dart';
 import 'package:mentorride/features/service_schedules/providers/service_schedule_providers.dart';
+import 'package:mentorride/features/maintenance_health/domain/services/maintenance_health_calculator.dart';
+import 'package:mentorride/app/router/app_routes.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 import 'package:mentorride/features/vehicles/domain/repositories/vehicle_repository.dart';
 import 'package:mentorride/features/vehicles/presentation/widgets/quick_odometer_update_dialog.dart';
@@ -92,14 +94,22 @@ class _DashboardData extends ConsumerWidget {
       serviceSchedules: schedules,
       now: now,
     );
+    final healthSummary = MaintenanceHealthCalculator.calculate(
+      records: records,
+      schedules: schedules,
+      currentOdometer: vehicle.currentOdometer,
+      now: now,
+    );
     return DashboardOverview(
       summary: summary,
+      healthSummary: healthSummary,
       now: now,
       onRefresh: () => _refreshDashboard(ref),
       onManageVehicles: () => context.push('/vehicles'),
       onAddService: () => context.push('/history/new'),
       onAddSchedule: () => context.push('/schedules/new'),
       onUpdateOdometer: () => _updateOdometer(context, vehicle),
+      onViewMaintenanceHealth: () => context.push(AppRoutes.maintenanceHealth),
     );
   }
 

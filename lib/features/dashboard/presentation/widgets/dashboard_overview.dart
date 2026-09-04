@@ -8,26 +8,31 @@ import 'package:mentorride/features/service_schedules/domain/models/service_sche
 import 'package:mentorride/features/service_schedules/domain/services/service_schedule_due_calculator.dart';
 import 'package:mentorride/features/service_schedules/presentation/widgets/service_schedule_status_badge.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
+import 'package:mentorride/features/maintenance_health/domain/models/maintenance_health.dart';
 
 class DashboardOverview extends StatefulWidget {
   const DashboardOverview({
     required this.summary,
+    this.healthSummary = const MaintenanceHealthSummary(items: []),
     required this.now,
     required this.onRefresh,
     required this.onManageVehicles,
     required this.onAddService,
     required this.onAddSchedule,
     required this.onUpdateOdometer,
+    this.onViewMaintenanceHealth,
     super.key,
   });
 
   final DashboardSummary summary;
+  final MaintenanceHealthSummary healthSummary;
   final DateTime now;
   final Future<void> Function() onRefresh;
   final VoidCallback onManageVehicles;
   final VoidCallback onAddService;
   final VoidCallback onAddSchedule;
   final VoidCallback onUpdateOdometer;
+  final VoidCallback? onViewMaintenanceHealth;
 
   @override
   State<DashboardOverview> createState() => _DashboardOverviewState();
@@ -101,6 +106,14 @@ class _DashboardOverviewState extends State<DashboardOverview>
           const SizedBox(height: 16),
           _DashboardEntrance(
             animation: _animation(0.38, 1, reduceMotion),
+            child: _HealthSummaryCard(
+              summary: widget.healthSummary,
+              onViewDetail: widget.onViewMaintenanceHealth,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _DashboardEntrance(
+            animation: _animation(0.48, 1, reduceMotion),
             child: _ExpenseOverview(summary: widget.summary, now: widget.now),
           ),
         ],
@@ -114,6 +127,80 @@ class _DashboardOverviewState extends State<DashboardOverview>
       parent: _controller,
       curve: Interval(begin, end, curve: Curves.easeOutCubic),
     );
+  }
+}
+
+class _HealthSummaryCard extends StatelessWidget {
+  const _HealthSummaryCard({required this.summary, required this.onViewDetail});
+
+  final MaintenanceHealthSummary summary;
+  final VoidCallback? onViewDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    summary.percentage == null
+                        ? 'Kondisi Perawatan'
+                        : 'Kondisi Perawatan ${summary.percentage}%',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: onViewDetail,
+                  child: const Text('Lihat detail'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _HealthCount(
+                  label: 'Aman',
+                  count: summary.count(MaintenanceHealthStatus.safe),
+                ),
+                _HealthCount(
+                  label: 'Mendekati',
+                  count: summary.count(MaintenanceHealthStatus.approaching),
+                ),
+                _HealthCount(
+                  label: 'Jatuh tempo',
+                  count: summary.count(MaintenanceHealthStatus.due),
+                ),
+                _HealthCount(
+                  label: 'Terlambat',
+                  count: summary.count(MaintenanceHealthStatus.overdue),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HealthCount extends StatelessWidget {
+  const _HealthCount({required this.label, required this.count});
+
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(label: Text('$label: $count'));
   }
 }
 
