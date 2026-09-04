@@ -5,6 +5,7 @@ import 'package:mentorride/core/storage/active_vehicle_store.dart';
 import 'package:mentorride/core/notifications/notification_providers.dart';
 import 'package:mentorride/core/notifications/reminder_scheduler.dart';
 import 'package:mentorride/features/auth/providers/auth_providers.dart';
+import 'package:mentorride/features/service_schedules/domain/models/service_schedule.dart';
 import 'package:mentorride/features/vehicles/domain/models/vehicle.dart';
 import 'package:mentorride/features/vehicles/domain/repositories/vehicle_repository.dart';
 import 'package:mentorride/features/vehicles/providers/vehicle_repository_provider.dart';
@@ -113,19 +114,27 @@ class VehicleController extends Notifier<VehicleActionState> {
     if (uid == null) return false;
     state = const VehicleActionState(isSubmitting: true);
     try {
-      final reminderIds = await _repository.reminderIdsForVehicle(
-        uid,
-        vehicleId,
-      );
-      await ref.read(vehicleReminderCancellerProvider).cancelAll(reminderIds);
-      await _repository.setArchived(
-        uid: uid,
-        vehicleId: vehicleId,
-        isArchived: true,
-      );
+      final schedules = await _repository.schedulesForVehicle(uid, vehicleId);
+      await ref
+          .read(vehicleReminderCancellerProvider)
+          .cancelAll(schedules.map((schedule) => schedule.localNotificationId));
+      try {
+        await _repository.setArchived(
+          uid: uid,
+          vehicleId: vehicleId,
+          isArchived: true,
+        );
+      } on Object {
+        await _restoreReminders(schedules);
+        rethrow;
+      }
       final store = ref.read(activeVehicleStoreProvider);
-      if (await store.read(uid) == vehicleId) {
-        await store.clear(uid);
+      try {
+        if (await store.read(uid) == vehicleId) {
+          await store.clear(uid);
+        }
+      } on Object {
+        // Stream kendaraan akan memperbaiki pilihan aktif bila cache gagal.
       }
       state = const VehicleActionState();
       return true;
@@ -140,6 +149,8 @@ class VehicleController extends Notifier<VehicleActionState> {
     final uid = _currentUid();
     if (uid == null) return false;
     state = const VehicleActionState(isSubmitting: true);
+    var vehicleWasRestored = false;
+    final attemptedReminderIds = <int>[];
     try {
       final schedules = await _repository.schedulesForVehicle(uid, vehicleId);
       final reminders = schedules
@@ -167,8 +178,10 @@ class VehicleController extends Notifier<VehicleActionState> {
         vehicleId: vehicleId,
         isArchived: false,
       );
+      vehicleWasRestored = true;
       final scheduler = ref.read(reminderSchedulerProvider);
       for (final schedule in reminders) {
+        attemptedReminderIds.add(schedule.localNotificationId);
         await scheduler.schedule(
           id: schedule.localNotificationId,
           title: 'Pengingat servis: ${schedule.title}',
@@ -181,6 +194,24 @@ class VehicleController extends Notifier<VehicleActionState> {
       state = const VehicleActionState();
       return true;
     } on Object catch (error) {
+      if (vehicleWasRestored) {
+        try {
+          await ref
+              .read(reminderSchedulerProvider)
+              .cancelMany(attemptedReminderIds);
+        } on Object {
+          // Pembersihan lokal best-effort; kendaraan tetap dicoba diarsipkan.
+        }
+        try {
+          await _repository.setArchived(
+            uid: uid,
+            vehicleId: vehicleId,
+            isArchived: true,
+          );
+        } on Object {
+          // Rollback best-effort; error penjadwalan awal tetap dilaporkan.
+        }
+      }
       state = VehicleActionState(errorMessage: _messageFor(error));
       return false;
     }
@@ -188,6 +219,30 @@ class VehicleController extends Notifier<VehicleActionState> {
 
   void clearError() {
     if (state.errorMessage != null) state = const VehicleActionState();
+  }
+
+  Future<void> _restoreReminders(Iterable<ServiceSchedule> schedules) async {
+    final scheduler = ref.read(reminderSchedulerProvider);
+    final now = DateTime.now();
+    for (final schedule in schedules.where(
+      (schedule) =>
+          schedule.reminderEnabled &&
+          !schedule.isCompleted &&
+          schedule.reminderAt.isAfter(now),
+    )) {
+      try {
+        await scheduler.schedule(
+          id: schedule.localNotificationId,
+          title: 'Pengingat servis: ${schedule.title}',
+          body:
+              '${schedule.serviceType} untuk kendaraan Anda segera dijadwalkan.',
+          scheduledAt: schedule.reminderAt,
+          payload: '/schedules/${schedule.id}',
+        );
+      } on Object {
+        // Kompensasi notifikasi best-effort; error write awal tetap dilaporkan.
+      }
+    }
   }
 
   String? _currentUid() {
