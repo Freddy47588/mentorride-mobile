@@ -35,6 +35,10 @@ abstract final class FirebaseErrorMapper {
         'Tidak dapat terhubung. Periksa koneksi internet Anda.',
       'requires-recent-login' =>
         'Silakan masuk kembali untuk melanjutkan perubahan ini.',
+      'user-token-expired' ||
+      'invalid-user-token' ||
+      'session-cookie-expired' =>
+        'Sesi Anda telah berakhir. Silakan masuk kembali.',
       'account-exists-with-different-credential' =>
         'Email ini sudah terdaftar dengan metode masuk lain.',
       'credential-already-in-use' =>
