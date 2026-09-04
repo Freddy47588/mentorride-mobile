@@ -57,6 +57,22 @@ void main() {
       'mentorride_motor_harian_2026-09-03.pdf',
     );
   });
+
+  test('nama panjang tetap mempertahankan nomor polisi dan tanggal', () {
+    final report = _report(
+      brand: List.filled(30, 'Kendaraan').join(' '),
+      model: List.filled(30, 'Harian').join(' '),
+      plateNumber: 'B 1234 ABC',
+    );
+
+    final fileName = ReportFilenameSanitizer.build(
+      report: report,
+      format: ServiceReportFormat.pdf,
+    );
+
+    expect(fileName, endsWith('_b1234abc_2026-09-03.pdf'));
+    expect(fileName.length, lessThanOrEqualTo(124));
+  });
 }
 
 ServiceReportData _report({

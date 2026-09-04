@@ -63,9 +63,14 @@ class CsvServiceReportGenerator implements ServiceReportDocumentGenerator {
   }
 
   String _encodeField(Object? value) {
-    final text = value?.toString() ?? '';
+    final text = _neutralizeSpreadsheetFormula(value?.toString() ?? '');
     if (!text.contains(RegExp('[,"\r\n]'))) return text;
     return '"${text.replaceAll('"', '""')}"';
+  }
+
+  String _neutralizeSpreadsheetFormula(String text) {
+    if (RegExp(r'^[\t\r ]*[=+\-@]').hasMatch(text)) return "'$text";
+    return text;
   }
 
   String _dateStamp(DateTime value) {

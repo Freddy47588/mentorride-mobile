@@ -120,6 +120,37 @@ void main() {
 
       expect(csv, contains('2026-09-03,15000,Bengkel,,,0,0,\r\n'));
     });
+
+    test('menetralkan formula spreadsheet pada kolom teks pengguna', () {
+      final report = ServiceReportMapper.map(
+        vehicle: _vehicle,
+        records: [
+          ServiceRecord(
+            id: 'formula',
+            serviceDate: DateTime(2026, 9, 3),
+            odometer: 15000,
+            workshop: '=HYPERLINK("https://example.invalid")',
+            items: const [
+              ServiceItem(
+                name: '  +SUM(1,2)',
+                action: ServiceAction.periksa,
+                cost: 0,
+              ),
+            ],
+            notes: '@CMD',
+          ),
+        ],
+        generatedAt: DateTime(2026, 9, 3),
+      );
+
+      final csv = utf8.decode(
+        CsvServiceReportGenerator().serialize(report).sublist(3),
+      );
+
+      expect(csv, contains("\"'+SUM(1,2)\""));
+      expect(csv, contains("'=HYPERLINK("));
+      expect(csv, contains("'@CMD"));
+    });
   });
 }
 

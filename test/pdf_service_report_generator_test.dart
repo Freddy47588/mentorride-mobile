@@ -24,12 +24,12 @@ void main() {
           workshop: 'Bengkel MentorRide',
           items: const [
             ServiceItem(
-              name: 'Oli mesin',
+              name: 'Oli mesin ✓',
               action: ServiceAction.ganti,
               cost: 125000,
             ),
           ],
-          notes: 'Servis berkala',
+          notes: 'Servis berkala – aman',
         ),
       ),
       generatedAt: DateTime(2026, 9, 3, 12),
@@ -56,7 +56,7 @@ void main() {
 
 const _vehicle = Vehicle(
   id: 'vehicle-1',
-  name: 'Motor Harian',
+  name: 'Motor Harian José',
   brand: 'Honda',
   model: 'Beat',
   year: 2024,

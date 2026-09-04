@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:mentorride/core/utils/formatters.dart';
@@ -7,19 +8,23 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 class PdfServiceReportGenerator implements ServiceReportDocumentGenerator {
-  static const _primaryColor = PdfColor.fromInt(0xff276749);
-  static const _lightBackground = PdfColor.fromInt(0xffedf7f2);
+  static const _primaryColor = PdfColor.fromInt(0xff2563eb);
+  static const _lightBackground = PdfColor.fromInt(0xffeff6ff);
+
+  Future<pw.ThemeData>? _theme;
 
   @override
   ServiceReportFormat get format => ServiceReportFormat.pdf;
 
   @override
   Future<Uint8List> generate(ServiceReportData report) async {
+    final theme = await (_theme ??= _loadLocalFontTheme());
     final document = pw.Document(
       title: 'Laporan servis ${report.vehicle.name}',
       author: 'MentorRide',
       creator: 'MentorRide',
       subject: 'Riwayat servis kendaraan',
+      theme: theme,
     );
 
     document.addPage(
@@ -49,6 +54,46 @@ class PdfServiceReportGenerator implements ServiceReportDocumentGenerator {
     );
 
     return document.save();
+  }
+
+  Future<pw.ThemeData> _loadLocalFontTheme() async {
+    final regular = await _firstAvailableFont(_regularFontCandidates);
+    if (regular == null) {
+      throw StateError(
+        'Font Unicode lokal tidak tersedia untuk membuat laporan PDF.',
+      );
+    }
+    final bold = await _firstAvailableFont(_boldFontCandidates) ?? regular;
+    final fallback = await _firstAvailableFont(_fallbackFontCandidates);
+
+    return pw.ThemeData.withFont(
+      base: pw.Font.ttf(regular.data),
+      bold: pw.Font.ttf(bold.data),
+      italic: pw.Font.ttf(regular.data),
+      boldItalic: pw.Font.ttf(bold.data),
+      fontFallback: [
+        if (fallback != null && fallback.path != regular.path)
+          pw.Font.ttf(fallback.data),
+      ],
+    );
+  }
+
+  Future<_LocalFontData?> _firstAvailableFont(
+    Iterable<String> candidates,
+  ) async {
+    for (final path in candidates) {
+      final file = File(path);
+      try {
+        if (!await file.exists()) continue;
+        final bytes = await file.readAsBytes();
+        if (bytes.isNotEmpty) {
+          return _LocalFontData(path, ByteData.sublistView(bytes));
+        }
+      } on FileSystemException {
+        // Beberapa vendor membatasi font tertentu; lanjutkan ke kandidat lain.
+      }
+    }
+    return null;
   }
 
   pw.Widget _header(ServiceReportData report) {
@@ -315,3 +360,42 @@ class PdfServiceReportGenerator implements ServiceReportDocumentGenerator {
         localLeft.day == localRight.day;
   }
 }
+
+class _LocalFontData {
+  const _LocalFontData(this.path, this.data);
+
+  final String path;
+  final ByteData data;
+}
+
+const _regularFontCandidates = <String>[
+  '/system/fonts/RobotoStatic-Regular.ttf',
+  '/system/fonts/Roboto-Regular.ttf',
+  '/system/fonts/NotoSans-Regular.ttf',
+  'C:/Windows/Fonts/arial.ttf',
+  'C:/Windows/Fonts/segoeui.ttf',
+  '/System/Library/Fonts/Supplemental/Arial.ttf',
+  '/Library/Fonts/Arial.ttf',
+  '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+  '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
+];
+
+const _boldFontCandidates = <String>[
+  '/system/fonts/RobotoStatic-Bold.ttf',
+  '/system/fonts/Roboto-Bold.ttf',
+  '/system/fonts/NotoSans-Bold.ttf',
+  'C:/Windows/Fonts/arialbd.ttf',
+  'C:/Windows/Fonts/segoeuib.ttf',
+  '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+  '/Library/Fonts/Arial Bold.ttf',
+  '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+  '/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf',
+];
+
+const _fallbackFontCandidates = <String>[
+  '/system/fonts/NotoSansSymbols2-Regular.ttf',
+  '/system/fonts/NotoSansSymbols-Regular-Subsetted.ttf',
+  '/system/fonts/NotoSansSymbols-Regular.ttf',
+  'C:/Windows/Fonts/seguisym.ttf',
+  '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+];

@@ -39,7 +39,20 @@ class ServiceReportController extends Notifier<ServiceReportExportState> {
   Future<ExportedServiceReport?> exportActiveVehicle(
     ServiceReportFormat format,
   ) async {
-    final vehicle = ref.read(activeVehicleProvider).value;
+    final vehicleValue = ref.read(activeVehicleProvider);
+    if (vehicleValue.isLoading) {
+      state = const ServiceReportExportState(
+        errorMessage: 'Tunggu hingga kendaraan aktif selesai dimuat.',
+      );
+      return null;
+    }
+    if (vehicleValue.hasError) {
+      state = const ServiceReportExportState(
+        errorMessage: 'Kendaraan aktif belum dapat dimuat.',
+      );
+      return null;
+    }
+    final vehicle = vehicleValue.value;
     if (vehicle == null) {
       state = const ServiceReportExportState(
         errorMessage: 'Pilih kendaraan sebelum mengekspor laporan.',
@@ -47,13 +60,31 @@ class ServiceReportController extends Notifier<ServiceReportExportState> {
       return null;
     }
 
+    final scope = ref.read(activeServiceRecordScopeProvider);
+    if (scope == null || scope.vehicleId != vehicle.id) {
+      state = const ServiceReportExportState(
+        errorMessage: 'Tunggu hingga riwayat kendaraan aktif siap.',
+      );
+      return null;
+    }
+
     final recordsValue = ref.read(serviceRecordsProvider);
+    if (recordsValue.isLoading) {
+      state = const ServiceReportExportState(
+        errorMessage: 'Tunggu hingga riwayat servis selesai dimuat.',
+      );
+      return null;
+    }
+    if (recordsValue.hasError) {
+      state = const ServiceReportExportState(
+        errorMessage: 'Riwayat servis belum dapat dimuat.',
+      );
+      return null;
+    }
     final records = recordsValue.value;
     if (records == null) {
-      state = ServiceReportExportState(
-        errorMessage: recordsValue.hasError
-            ? 'Riwayat servis belum dapat dimuat.'
-            : 'Tunggu hingga riwayat servis selesai dimuat.',
+      state = const ServiceReportExportState(
+        errorMessage: 'Tunggu hingga riwayat servis selesai dimuat.',
       );
       return null;
     }

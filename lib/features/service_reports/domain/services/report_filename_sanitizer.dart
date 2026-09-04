@@ -13,19 +13,30 @@ abstract final class ReportFilenameSanitizer {
         vehicle.name,
     ];
     final vehicleName = sanitizeSegment(vehicleSegments.join(' '));
-    final plateNumber = _sanitizePlate(vehicle.plateNumber);
+    final rawPlateNumber = _sanitizePlate(vehicle.plateNumber);
+    final plateNumber = rawPlateNumber.length <= 24
+        ? rawPlateNumber
+        : rawPlateNumber.substring(0, 24);
     final date = _dateStamp(report.generatedAt);
-
+    final fixedSegments = [
+      'mentorride',
+      if (plateNumber.isNotEmpty) plateNumber,
+      date,
+    ];
+    final fixedName = fixedSegments.join('_');
+    final availableVehicleLength = 120 - fixedName.length - 1;
+    final safeVehicleName = vehicleName.length <= availableVehicleLength
+        ? vehicleName
+        : vehicleName
+              .substring(0, availableVehicleLength)
+              .replaceFirst(RegExp(r'_+$'), '');
     final baseName = [
       'mentorride',
-      if (vehicleName.isNotEmpty) vehicleName,
+      if (safeVehicleName.isNotEmpty) safeVehicleName,
       if (plateNumber.isNotEmpty) plateNumber,
       date,
     ].join('_');
-    final safeBaseName = baseName.length <= 120
-        ? baseName
-        : baseName.substring(0, 120).replaceFirst(RegExp(r'_+$'), '');
-    return '$safeBaseName.${format.extension}';
+    return '$baseName.${format.extension}';
   }
 
   static String sanitizeSegment(String value) {

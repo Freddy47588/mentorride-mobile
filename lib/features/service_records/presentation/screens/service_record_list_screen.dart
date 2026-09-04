@@ -46,7 +46,18 @@ class _ServiceRecordListScreenState
   @override
   Widget build(BuildContext context) {
     final activeVehicle = ref.watch(activeVehicleProvider);
+    final activeScope = ref.watch(activeServiceRecordScopeProvider);
+    final records = ref.watch(serviceRecordsProvider);
     final exportState = ref.watch(serviceReportControllerProvider);
+    final vehicle = activeVehicle.value;
+    final canExport =
+        vehicle != null &&
+        !activeVehicle.isLoading &&
+        !activeVehicle.hasError &&
+        activeScope?.vehicleId == vehicle.id &&
+        records.hasValue &&
+        !records.isLoading &&
+        !records.hasError;
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 220);
@@ -72,7 +83,7 @@ class _ServiceRecordListScreenState
                   : IconButton(
                       key: const ValueKey('report-export-action'),
                       tooltip: 'Ekspor laporan',
-                      onPressed: _chooseReportFormat,
+                      onPressed: canExport ? _chooseReportFormat : null,
                       icon: const Icon(Icons.ios_share_rounded),
                     ),
             ),
@@ -643,7 +654,7 @@ class _FilterBar extends ConsumerWidget {
     final selected = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: DateTime(2000),
+      firstDate: DateTime(1950),
       lastDate: DateTime(now.year + 2, 12, 31),
       helpText: 'Pilih periode servis',
       cancelText: 'Batal',
