@@ -8,11 +8,19 @@ input pengguna dan disimpan per akun di Cloud Firestore.
 
 - Registrasi, login, reset kata sandi, edit nama, dan logout dengan Firebase
   Authentication.
+- Onboarding tiga langkah pada penggunaan pertama. Status selesai disimpan
+  lokal dengan `shared_preferences`, bukan di Firestore.
 - CRUD kendaraan, pilihan kendaraan aktif yang disimpan per pengguna, dan
   pembaruan odometer cepat. Nilai odometer dijaga tidak pernah turun melalui
   transaksi Firestore; nilai yang sama diperlakukan sebagai tanpa perubahan.
 - Riwayat servis dengan beberapa item per transaksi, total biaya otomatis,
-  filter bulan/tahun, serta pembaruan odometer kendaraan secara transaksional.
+  pencarian lokal berdasarkan bengkel, komponen, dan catatan, filter periode
+  dan biaya, serta pembaruan odometer kendaraan secara transaksional.
+- Statistik perawatan dihitung lokal dari data yang sudah dimuat, meliputi
+  jumlah servis, total dan rata-rata biaya, serta komponen yang paling sering
+  dirawat.
+- Laporan kendaraan aktif dapat diekspor sebagai PDF A4 atau CSV UTF-8 lalu
+  dibagikan melalui Android share sheet tanpa izin penyimpanan lama.
 - Preset perawatan lokal untuk membantu mengisi komponen dan jenis servis tanpa
   mengambil dataset eksternal.
 - Jadwal servis dengan tanggal jatuh tempo dan kilometer jatuh tempo opsional,
@@ -24,7 +32,8 @@ input pengguna dan disimpan per akun di Cloud Firestore.
 - Dashboard kendaraan aktif, servis terakhir, jadwal terdekat, biaya bulan dan
   tahun berjalan, serta grafik biaya enam bulan.
 - Antarmuka Material 3 berbahasa Indonesia dengan loading, error, empty state,
-  validasi formulir, snackbar, dan dialog konfirmasi.
+  validasi formulir, snackbar, dialog konfirmasi, dan animasi ringan yang
+  menghormati pengaturan pengurangan gerakan perangkat.
 
 ## Teknologi
 
@@ -35,6 +44,8 @@ input pengguna dan disimpan per akun di Cloud Firestore.
 - Firebase Core, Authentication, dan Cloud Firestore
 - `flutter_local_notifications` dan `timezone` untuk Asia/Jakarta
 - `shared_preferences`, `uuid`, `intl`, dan `fl_chart`
+- `pdf`, `path_provider`, dan `share_plus` untuk membuat, menyimpan sementara,
+  dan membagikan laporan servis di perangkat
 
 ## Struktur folder
 
@@ -46,8 +57,10 @@ lib/
 │   ├── auth/                    autentikasi dan profil pengguna
 │   ├── dashboard/               agregasi dan tampilan beranda
 │   ├── navigation/              shell bottom navigation
+│   ├── onboarding/              pengalaman penggunaan pertama
 │   ├── profile/                 profil, izin notifikasi, dan logout
 │   ├── service_records/         riwayat servis dan biaya
+│   ├── service_reports/         pemetaan dan ekspor laporan kendaraan
 │   ├── service_schedules/       jadwal dan pengingat lokal
 │   └── vehicles/                kendaraan dan pilihan aktif
 ├── shared/                      widget yang digunakan lintas fitur
@@ -160,7 +173,46 @@ flutter build apk --debug
 Pengujian unit tidak mengakses proyek Firebase live. Repository dan scheduler
 notifikasi diuji melalui fake yang berada di folder `test/`. Kalkulator jatuh
 tempo, aturan odometer tidak menurun, preset lokal, dan isian awal jadwal
-berikutnya juga memiliki pengujian terpisah.
+berikutnya juga memiliki pengujian terpisah. Onboarding, pencarian dan filter,
+agregasi statistik, serialisasi CSV, pemetaan dan pembuatan PDF, sanitasi nama
+file, keamanan scope ekspor, serta layout pada layar kecil dan teks besar ikut
+tercakup.
+
+## GitHub Actions
+
+Workflow [`.github/workflows/flutter_ci.yml`](.github/workflows/flutter_ci.yml)
+berjalan untuk setiap push dan pull request ke `main`. CI menggunakan Flutter
+3.44.2 dan Java 17, memakai cache Flutter/Pub serta Gradle, lalu menjalankan
+instalasi dependency, pemeriksaan format, analyzer, seluruh test, dan build APK
+debug. Workflow ini tidak melakukan deploy Firebase atau membuat release.
+
+## Build APK release
+
+Jalankan rangkaian validasi dan build berikut dari root repository:
+
+```bash
+flutter clean
+flutter pub get
+flutter analyze
+flutter test
+flutter build apk --release
+```
+
+Konfigurasi Gradle tidak memakai debug key untuk varian release. Sebelum
+menjalankan perintah build release, buat keystore milik developer di lokasi
+aman di luar repository, lalu buat `android/key.properties` lokal dengan empat
+properti `storeFile`, `storePassword`, `keyAlias`, dan `keyPassword`.
+`storeFile` harus menunjuk ke keystore sebenarnya. Tanpa file ini, konfigurasi
+release tidak memiliki signing config dan artefaknya tidak siap
+didistribusikan. File properti dan seluruh format keystore terkait sudah
+diabaikan Git dan tidak boleh di-commit.
+
+Setelah signing tersedia, APK release dihasilkan di
+`build/app/outputs/flutter-apk/app-release.apk`.
+
+Naikkan `version` pada `pubspec.yaml` sesuai rilis sebelum mengunggah artefak.
+Simpan keystore dan password pada password manager atau secret storage tim;
+kehilangan upload key dapat menghambat pembaruan aplikasi berikutnya.
 
 ## Catatan pengembangan
 
