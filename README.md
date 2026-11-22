@@ -1,110 +1,84 @@
+<div align="center">
+  <img src="assets/images/mentorride_logo.png" alt="MentorRide logo" width="96" />
+
 # MentorRide Mobile
 
-MentorRide adalah aplikasi Android untuk mencatat kendaraan, riwayat servis,
-biaya perawatan, jadwal servis, dan pengingat lokal. Seluruh data berasal dari
-input pengguna dan disimpan per akun di Cloud Firestore.
+**Motorcycle Maintenance History, Cost Analytics & Service Scheduler**
 
-## Fitur
+[![Flutter](https://img.shields.io/badge/Flutter-3.44%2B-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.12%2B-0175C2?logo=dart&logoColor=white)](https://dart.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Riverpod](https://img.shields.io/badge/State-Riverpod-00B4AB)](https://riverpod.dev)
+[![CI](https://github.com/Freddy47588/mentorride-mobile/actions/workflows/flutter_ci.yml/badge.svg)](https://github.com/Freddy47588/mentorride-mobile/actions/workflows/flutter_ci.yml)
 
-- Registrasi, login, reset kata sandi, edit nama, dan logout dengan Firebase
-  Authentication.
-- Onboarding tiga langkah pada penggunaan pertama. Status selesai disimpan
-  lokal dengan `shared_preferences`, bukan di Firestore.
-- CRUD kendaraan, pilihan kendaraan aktif yang disimpan per pengguna, dan
-  pembaruan odometer cepat. Nilai odometer dijaga tidak pernah turun melalui
-  transaksi Firestore; nilai yang sama diperlakukan sebagai tanpa perubahan.
-- Arsip kendaraan yang mempertahankan seluruh riwayat, jadwal, dan log
-  kilometer. Kendaraan arsip tidak dapat menjadi kendaraan aktif dan dapat
-  dipulihkan atau dihapus permanen dengan konfirmasi kuat.
-- Riwayat kenaikan odometer dengan sumber pembaruan manual atau riwayat servis,
-  grafik 30 hari sampai 1 tahun, serta statistik pemakaian bulanan.
-- Riwayat servis dengan beberapa item per transaksi, total biaya otomatis,
-  pencarian lokal berdasarkan bengkel, komponen, dan catatan, filter periode
-  dan biaya, serta pembaruan odometer kendaraan secara transaksional.
-- Statistik perawatan dihitung lokal dari data yang sudah dimuat, meliputi
-  jumlah servis, total dan rata-rata biaya, serta komponen yang paling sering
-  dirawat.
-- Laporan kendaraan aktif dapat diekspor sebagai PDF A4 atau CSV UTF-8 lalu
-  dibagikan melalui Android share sheet tanpa izin penyimpanan lama.
-- Preset perawatan lokal untuk membantu mengisi komponen dan jenis servis tanpa
-  mengambil dataset eksternal. Interval pada preset adalah interval perawatan
-  default sebagai referensi, bukan interval wajib untuk semua kendaraan.
-- Kondisi Perawatan dan estimasi servis berikutnya dihitung secara deterministik
-  dari preset lokal, riwayat, jadwal, tanggal, dan odometer. Persentase yang
-  ditampilkan menilai kelengkapan dan ketepatan catatan perawatan.
-- Jadwal servis dengan tanggal jatuh tempo dan kilometer jatuh tempo opsional,
-  kalkulator status bersama untuk kedua dimensi, pengingat lokal, status
-  selesai, dan ID notifikasi yang stabil.
-- Alur selesai dapat membuka formulir jadwal berikutnya dengan judul dan jenis
-  servis yang sama. Tanggal wajib dipilih ulang; kilometer opsional dan pilihan
-  pengingat tidak diwarisi.
-- Dashboard kendaraan aktif, servis terakhir, jadwal terdekat, biaya bulan dan
-  tahun berjalan, ringkasan kondisi perawatan, serta grafik biaya enam bulan.
-- Kalender perawatan bulanan dengan status jadwal bersama, backup/restore JSON
-  lokal dengan remapping ID, pilihan daftar/timeline riwayat servis, dan tema
-  Sistem, Terang, atau Gelap.
-- Antarmuka Material 3 berbahasa Indonesia dengan loading, error, empty state,
-  validasi formulir, snackbar, dialog konfirmasi, dan animasi ringan yang
-  menghormati pengaturan pengurangan gerakan perangkat.
+</div>
 
-## Teknologi
+MentorRide is an Android mobile application for tracking motorcycles, service records, maintenance costs, service schedules, and local reminders. All records are user-entered and stored per account in Cloud Firestore.
 
-- Flutter 3.44 atau lebih baru dan Dart 3.12 atau lebih baru
-- Material 3 dan `flutter_localizations`
-- Riverpod tanpa code generation
-- GoRouter dengan redirect autentikasi
-- Firebase Core, Authentication, dan Cloud Firestore
-- `flutter_local_notifications` dan `timezone` untuk Asia/Jakarta
-- `shared_preferences`, `uuid`, `intl`, dan `fl_chart`
-- `pdf`, `path_provider`, dan `share_plus` untuk membuat, menyimpan sementara,
-  dan membagikan laporan servis di perangkat
-- `file_picker` untuk memilih backup JSON lokal dan `package_info_plus` untuk
-  menampilkan versi aplikasi
+> **Note:** The in-app user interface is localized in Bahasa Indonesia for local riders, while this repository documentation is written in English.
 
-## Arsitektur Spark-only
+## Features
 
-MentorRide tetap kompatibel dengan Firebase Spark. Layanan Firebase yang dipakai
-hanya Firebase Authentication dan Cloud Firestore. Aplikasi tidak menggunakan
-Firebase Storage, Cloud Functions, Firebase Messaging, Firebase Extensions,
-backend tambahan, atau layanan Google Cloud yang memerlukan billing. Preset
-perawatan tetap menjadi data referensi lokal dan file backup dibuat di
-penyimpanan sementara perangkat sebelum dibagikan.
+- **Firebase Authentication:** Registration, login, password reset, profile name updates, and logout via Firebase Email/Password authentication.
+- **First-Run Onboarding:** Three-step onboarding flow with completion state stored locally via `shared_preferences` (not in Firestore).
+- **Vehicle Management & Monotonic Odometer:** Full vehicle CRUD, per-user active vehicle selection, and quick odometer updates. Firestore transactions ensure odometer readings never decrease; identical values are treated as no-ops.
+- **Vehicle Archiving:** Archive vehicles while retaining full service history, schedules, and odometer logs. Archived vehicles cannot be selected as active and can be restored or permanently deleted with strong confirmation.
+- **Odometer History & Trends:** Tracks odometer increments from manual updates or service records, with 30-day to 1-year charts and monthly usage statistics.
+- **Service Records:** Multi-item service entries with automatic cost totals, local search (workshop, component, notes), date/cost filters, and transactional vehicle odometer updates.
+- **Local Maintenance Statistics:** Computes service counts, total and average costs, and most-serviced components directly from loaded records.
+- **On-Device Report Export:** Exports active vehicle reports to A4 PDF or UTF-8 CSV and shares them via the Android share sheet without requiring legacy storage permissions.
+- **Local Maintenance Presets:** Built-in local preset references for common motorcycle components and default intervals (no external datasets required).
+- **Deterministic Maintenance Condition:** Calculates maintenance readiness and next-service estimates deterministically from local presets, service history, schedules, dates, and odometer readings.
+- **Service Schedules & Local Reminders:** Supports optional due dates and due odometers using a shared domain status calculator, stable local notification IDs, completion states, and quick follow-up scheduling.
+- **Dashboard & Calendar:** Active vehicle overview, latest service, upcoming schedule, monthly/yearly spend, 6-month cost chart, monthly maintenance calendar, local JSON backup/restore with ID remapping, list/timeline view toggle, and System/Light/Dark themes.
+- **Accessible Material 3 UI:** Loading, error, and empty states, form validation, snackbars, confirmation dialogs, and reduced-motion-aware animations.
 
-## Struktur folder
+## Tech Stack
+
+- **Framework & Language:** Flutter 3.44+ and Dart 3.12+
+- **UI & Localization:** Material 3, `flutter_localizations`, `fl_chart`
+- **State & Navigation:** Riverpod (without code generation), GoRouter with auth redirects
+- **Backend (Firebase Spark-compatible):** Firebase Core, Firebase Authentication, Cloud Firestore
+- **Notifications & Timezone:** `flutter_local_notifications`, `timezone` (`Asia/Jakarta`)
+- **Utilities & Export:** `shared_preferences`, `uuid`, `intl`, `pdf`, `path_provider`, `share_plus`, `file_picker`, `package_info_plus`
+
+## Spark-Only Architecture
+
+MentorRide is designed to stay compatible with the **Firebase Spark** (free) plan. It uses only **Firebase Authentication** and **Cloud Firestore**—without Firebase Storage, Cloud Functions, Firebase Messaging, Firebase Extensions, external backends, or paid Google Cloud services. Maintenance presets remain local reference data, and exported reports/JSON backups are generated in temporary device storage prior to sharing.
+
+## Project Structure
 
 ```text
 lib/
-├── app/                         tema, router, dan root aplikasi
-├── core/                        Firebase, error, notifikasi, storage, utilitas
+├── app/                         Theme, router, and application root
+├── core/                        Firebase, error handling, notifications, storage, utilities
 ├── features/
-│   ├── auth/                    autentikasi dan profil pengguna
-│   ├── dashboard/               agregasi dan tampilan beranda
-│   ├── navigation/              shell bottom navigation
-│   ├── onboarding/              pengalaman penggunaan pertama
-│   ├── profile/                 profil, izin notifikasi, dan logout
-│   ├── service_records/         riwayat servis dan biaya
-│   ├── service_reports/         pemetaan dan ekspor laporan kendaraan
-│   ├── service_schedules/       jadwal dan pengingat lokal
-│   └── vehicles/                kendaraan dan pilihan aktif
-├── shared/                      widget yang digunakan lintas fitur
-├── firebase_options.dart        konfigurasi klien hasil FlutterFire
-└── main.dart                    bootstrap Firebase dan notifikasi
+│   ├── auth/                    Authentication and user profile
+│   ├── dashboard/               Home screen aggregation and UI
+│   ├── navigation/              Bottom navigation shell
+│   ├── onboarding/              First-run experience
+│   ├── profile/                 Profile, notification permissions, and logout
+│   ├── service_records/         Service history and costs
+│   ├── service_reports/         Vehicle report mapping and PDF/CSV export
+│   ├── service_schedules/       Schedules and local reminders
+│   └── vehicles/                Vehicle CRUD and active selection
+├── shared/                      Cross-feature reusable widgets
+├── firebase_options.dart        FlutterFire generated client configuration
+└── main.dart                    Firebase and notification bootstrap
 ```
 
-Setiap fitur memisahkan model/domain, adapter data atau repository, provider,
-controller/service bila diperlukan, dan layar presentasi. Model menggunakan
-`fromMap`, `toMap`, dan `copyWith` tanpa code generation. Status jatuh tempo
-tanggal dan odometer dihitung oleh satu kalkulator domain agar dashboard,
-daftar, dan detail menggunakan aturan yang sama.
+Each feature separates domain models, data adapters/repositories, providers, controllers/services, and presentation screens. Models use explicit `fromMap`, `toMap`, and `copyWith` methods without code generation. Date and odometer due statuses are computed by a single shared domain calculator across the dashboard, lists, and detail views.
 
-## Struktur Cloud Firestore
+## Cloud Firestore Schema
 
 ```text
 users/{uid}
 ├── displayName, email, createdAt, updatedAt
 └── vehicles/{vehicleId}
-    ├── name, brand, model, year, plateNumber, currentOdometer
+    ├── name, brand, model, year, plateNumber, currentOdometer, isArchived
     ├── createdAt, updatedAt
+    ├── odometer_logs/{logId}
+    │   └── odometer, recordedAt, source ("manual_update" | "service_record")
     ├── service_records/{recordId}
     │   ├── serviceDate, odometer, workshop, items, totalCost, notes
     │   └── createdAt, updatedAt
@@ -114,85 +88,55 @@ users/{uid}
         └── createdAt, updatedAt
 ```
 
-Nominal Rupiah, kilometer, tahun, dan ID notifikasi disimpan sebagai integer.
-`createdAt` dan `updatedAt` ditulis dengan `FieldValue.serverTimestamp()` dan
-dapat sementara bernilai `null` sebelum write lokal dikonfirmasi server.
+Rupiah amounts, odometer values, years, and notification IDs are stored as integers. `createdAt` and `updatedAt` use `FieldValue.serverTimestamp()` and may temporarily be `null` before local writes are acknowledged by the server.
 
-Dokumen kendaraan juga memiliki `isArchived` dengan default kompatibel
-`false`. Kenaikan kilometer membuat dokumen audit di
-`users/{uid}/vehicles/{vehicleId}/odometer_logs/{logId}` berisi integer
-`odometer`, server timestamp `recordedAt`, dan `source` berupa `manual_update`
-atau `service_record`.
+## Firebase Configuration
 
-## Konfigurasi Firebase
-
-Repository sudah mengharapkan konfigurasi FlutterFire Android berikut:
+This repository expects the following Android FlutterFire configuration:
 
 - `lib/firebase_options.dart`
 - `android/app/google-services.json`
-- application ID `com.mentorrideapp.mentorride`
+- Android application ID: `com.mentorrideapp.mentorride`
 
-Jika salah satu konfigurasi belum tersedia atau proyek Firebase perlu diganti,
-jalankan FlutterFire CLI untuk Android dan gunakan nilai yang dihasilkan oleh
-Firebase. Jangan membuat API key, app ID, UID, akun, atau kredensial sendiri.
+To link a different Firebase project, run the FlutterFire CLI for Android:
 
 ```bash
 flutterfire configure --platforms=android
 ```
 
-Di Firebase Console, aktifkan:
+In Firebase Console, enable:
+1. **Authentication** with the **Email/Password** sign-in provider.
+2. **Cloud Firestore** using the `(default)` database.
 
-1. Authentication dengan provider Email/Password.
-2. Cloud Firestore untuk database `(default)`.
+Never commit service-account keys, Firebase Admin SDK credentials, `.env` files, Android keystores, or private tokens.
 
-Jangan menaruh service-account key, Firebase Admin SDK key, `.env`, Android
-keystore, token, atau kredensial lokal di repository. Konfigurasi klien
-FlutterFire bukan service-account key.
+## Getting Started
 
-## Menjalankan aplikasi
-
-Pastikan Flutter SDK, Android SDK, dan perangkat atau emulator Android tersedia.
+Ensure the Flutter SDK, Android SDK, and an Android device or emulator are available:
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-Notifikasi memakai zona `Asia/Jakarta` dan mode penjadwalan Android yang tidak
-memerlukan izin exact alarm. Android 13 atau lebih baru akan meminta izin
-notifikasi saat pengguna mengaktifkan pengingat. Pengingat dibatalkan ketika
-jadwal diedit, dihapus, ditandai selesai, kendaraannya dihapus, atau pengguna
-logout.
+Local reminders use the `Asia/Jakarta` timezone and Android scheduling modes that do not require exact-alarm permissions. Android 13+ prompts for notification permission when reminders are enabled. Scheduled notifications are automatically canceled when a schedule is edited, deleted, marked complete, its parent vehicle is deleted, or the user logs out.
 
-Pengingat lokal dijadwalkan berdasarkan `reminderAt`, bukan berdasarkan sensor
-odometer kendaraan. Ambang `dueOdometer` dievaluasi setelah kilometer kendaraan
-diubah atau data terbaru dimuat di aplikasi. Karena MVP tidak memantau kendaraan
-di latar belakang, tercapainya kilometer fisik tidak dapat memicu notifikasi
-sampai data odometer di aplikasi diperbarui.
+> Local reminders are scheduled based on `reminderAt`, not live hardware odometer sensors. `dueOdometer` thresholds are evaluated when the user updates the odometer or loads updated data in the app.
 
 ## Firestore Security Rules
 
-`firestore.rules` hanya mengizinkan pengguna terautentikasi mengakses profil,
-kendaraan, riwayat servis, jadwal, dan log odometer di bawah `users/{uid}`
-miliknya. Log odometer tidak dapat diedit; penghapusan hanya diizinkan bagi
-pemilik untuk mendukung penghapusan permanen kendaraan. Semua path lain
-ditolak. Query saat ini tidak memerlukan compound index, sehingga
-`firestore.indexes.json` tetap kosong.
+`firestore.rules` restricts read/write access strictly to authenticated users under their own `users/{uid}` subtree:
+- `odometer_logs` are immutable (no updates; deletion is permitted only by the owner to support permanent vehicle cascade deletion).
+- Vehicle writes enforce that `currentOdometer` is a non-negative integer and never lower than the previously stored value.
+- All other paths are denied by default. No composite indexes are currently required (`firestore.indexes.json` remains empty).
 
-Write dokumen kendaraan juga mewajibkan `currentOdometer` berupa integer
-nonnegatif dan tidak lebih kecil daripada nilai yang sudah tersimpan. Dokumen
-lama dengan odometer hilang atau bukan integer tetap dapat dimigrasikan ke nilai
-valid tanpa membuka akses lintas pengguna.
-
-Tinjau proyek Firebase aktif sebelum menjalankan perintah berikut secara manual:
+Review the active Firebase project before manually deploying rules:
 
 ```bash
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-Tidak ada deploy otomatis dari aplikasi atau workflow repository ini.
-
-## Validasi
+## Validation & Testing
 
 ```bash
 dart format --output=none --set-exit-if-changed lib test
@@ -201,25 +145,13 @@ flutter test
 flutter build apk --debug
 ```
 
-Pengujian unit tidak mengakses proyek Firebase live. Repository dan scheduler
-notifikasi diuji melalui fake yang berada di folder `test/`. Kalkulator jatuh
-tempo, aturan odometer tidak menurun, preset lokal, dan isian awal jadwal
-berikutnya juga memiliki pengujian terpisah. Onboarding, pencarian dan filter,
-agregasi statistik, serialisasi CSV, pemetaan dan pembuatan PDF, sanitasi nama
-file, keamanan scope ekspor, serta layout pada layar kecil dan teks besar ikut
-tercakup.
+Unit and widget tests run offline without hitting live Firebase using fakes under `test/`. Coverage includes due-date/odometer calculators, monotonic odometer enforcement, local presets, follow-up schedule defaults, onboarding, search/filter, statistics aggregation, CSV/PDF export serialization, filename sanitization, and small-screen/large-text layout checks.
 
-## GitHub Actions
+## Continuous Integration
 
-Workflow [`.github/workflows/flutter_ci.yml`](.github/workflows/flutter_ci.yml)
-berjalan untuk setiap push dan pull request ke `main`. CI menggunakan Flutter
-3.44.2 dan Java 17, memakai cache Flutter/Pub serta Gradle, lalu menjalankan
-instalasi dependency, pemeriksaan format, analyzer, seluruh test, dan build APK
-debug. Workflow ini tidak melakukan deploy Firebase atau membuat release.
+[`.github/workflows/flutter_ci.yml`](.github/workflows/flutter_ci.yml) runs on every push and pull request to `main` using Flutter 3.44.2 and Java 17. It verifies formatting, static analysis, the full test suite, and a debug APK build. It does not deploy Firebase rules or publish releases automatically.
 
-## Build APK release
-
-Jalankan rangkaian validasi dan build berikut dari root repository:
+## Building a Release APK
 
 ```bash
 flutter clean
@@ -229,35 +161,13 @@ flutter test
 flutter build apk --release
 ```
 
-Konfigurasi Gradle tidak memakai debug key untuk varian release. Sebelum
-menjalankan perintah build release, buat keystore milik developer di lokasi
-aman di luar repository, lalu buat `android/key.properties` lokal dengan empat
-properti `storeFile`, `storePassword`, `keyAlias`, dan `keyPassword`.
-`storeFile` harus menunjuk ke keystore sebenarnya. Tanpa file ini, konfigurasi
-release tidak memiliki signing config dan artefaknya tidak siap
-didistribusikan. File properti dan seluruh format keystore terkait sudah
-diabaikan Git dan tidak boleh di-commit.
+Gradle does not sign release builds with a debug key. Before running `flutter build apk --release`, create a developer keystore outside the repository and add a local (gitignored) `android/key.properties` file containing `storeFile`, `storePassword`, `keyAlias`, and `keyPassword`.
 
-Setelah signing tersedia, APK release dihasilkan di
-`build/app/outputs/flutter-apk/app-release.apk`.
+The signed release APK is output to `build/app/outputs/flutter-apk/app-release.apk`. See [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) and [`RELEASE_NOTES.md`](RELEASE_NOTES.md) for `1.0.0` release preparation.
 
-Naikkan `version` pada `pubspec.yaml` sesuai rilis sebelum mengunggah artefak.
-Simpan keystore dan password pada password manager atau secret storage tim;
-kehilangan upload key dapat menghambat pembaruan aplikasi berikutnya.
+## Engineering Notes
 
-Untuk rilis `1.0.0`, gunakan [checklist rilis](RELEASE_CHECKLIST.md) dan
-[catatan rilis](RELEASE_NOTES.md) yang sudah disiapkan. Publishing tag, GitHub
-Release, APK, dan deploy Firebase tetap merupakan langkah manual developer.
-
-## Catatan pengembangan
-
-- Platform awal adalah Android dan seluruh teks pengguna harus berbahasa
-  Indonesia.
-- Firestore tidak menghapus subcollection secara otomatis; penghapusan
-  kendaraan menggunakan cascade delete dan membatalkan pengingat turunannya.
-- Odometer kendaraan bersifat monoton: pembaruan cepat, edit kendaraan, dan
-  pencatatan servis tidak boleh menurunkan nilai yang sudah tersimpan.
-- Mengedit atau menghapus riwayat servis tidak menghitung mundur odometer
-  kendaraan.
-- Aplikasi tidak menggunakan AI, Firebase Messaging, Cloud Functions, atau
-  dataset eksternal.
+- Initial target platform is Android with Indonesian in-app copy.
+- Because Cloud Firestore does not auto-delete subcollections, deleting a vehicle performs a cascade delete and cancels its scheduled notifications.
+- Vehicle odometer values are monotonic across quick updates, vehicle edits, and new service records. Editing or deleting past service records does not roll back the vehicle's current odometer.
+- The app intentionally avoids AI dependencies, Firebase Cloud Messaging, Cloud Functions, and external datasets.
